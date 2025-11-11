@@ -8,18 +8,18 @@ import {
   products,
 } from "../models/init-models";
 import { AuthenticatedRequest } from "../types/requestsTypes";
-import { formatedFileUrl } from "../utils/formatedFileUrl";
+import { formatedFileUrl } from "../utils/fileUtils";
 import {
   paymentUrl,
   RequestPayment,
   RequestVerifyPayment,
   zarinpalErrorMessages,
 } from "../utils/paymentUtils";
-import { validateDiscount } from "../utils/discountUtil";
-import { extend, string } from "joi";
+import { useDiscountCode, validateDiscount } from "../utils/discountUtil";
 import { sendFactorSmsOrder, sendSmsSuccessOrder } from "../utils/smsUtils";
 
 // type_of_payment === 1 : payment with bankaccount via zarinpal
+// type_of_payment === 0 : siteAdmin create factor
 
 interface OrderItemsWithProduct extends order_items {
   product: products;
@@ -39,7 +39,6 @@ const Orders = models.orders;
 const OrderItems = models.order_items;
 const Address = models.addresses;
 const Product = models.products;
-const discountCodes = models.discount_codes;
 const users = models.users;
 
 export const createOrder = async (
@@ -68,9 +67,7 @@ export const createOrder = async (
     let description: string = "";
 
     for (const item of items) {
-      // console.log(item, "item ");
       const product = await products.findByPk(item.product_id);
-      // console.log(product, "product");
       if (product && product?.stock) {
         const newProdDescription = `${product.name} : ${item.quantity} \n`;
         description = description + newProdDescription;
@@ -103,13 +100,7 @@ export const createOrder = async (
         discount_amount = discountValidate.discount_amount;
         total_cost = total_cost - discount_amount;
         // increase the time of the discountcode that used
-        const dc = await discountCodes.findOne({
-          where: {
-            code: discount_code,
-          },
-          transaction: t,
-        });
-        dc?.increment("used_count");
+        await useDiscountCode(discount_code);
       } else {
         res.status(422).json(discountValidate);
       }
@@ -810,59 +801,3 @@ export const verifyPayment = async (
     return;
   }
 };
-
-// export const verifyDaily = async (
-//   req: Request,
-//   res: Response
-// ): Promise<void> => {
-//   const { key } = req.query;
-//   if (!key || key !== process.env.DAILY_KEY) {
-//     res.status(403).json({ success: false, message: "forbiden" });
-//   }
-//   try {
-//     const pendingOrders: OrderWithItems[] | null = await orders.findAll({
-//       where: { payment_status: 0, type_of_payment: 1 },
-//     });
-
-//     let paid = 0;
-//     let deleted = 0;
-
-//     for (const order of pendingOrders) {
-//       const expired =
-//         Date.now() - new Date(order?.created_at || "").getTime() >
-//         15 * 60 * 1000;
-
-//       try {
-//         const paymentStatus = await RequestVerifyPayment({
-//           authority: order.payment_authority,
-//           amount: order.total_cost,
-//         });
-
-//         if (paymentStatus.status === 100) {
-//           await order.update({ payment_status: 1 });
-//           paid++;
-//         } else if (expired) {
-//           const items = order.order_items || [];
-//           for (const item of items) {
-//             await Product.increment(
-//               { stock: item.quantity },
-//               { where: { id: item.product_id } }
-//             );
-//           }
-//           await order.destroy();
-//           deleted++;
-//         }
-//       } catch (err) {
-//         console.error(`Error verifying order ${order.id}:`, err);
-//       }
-//     }
-
-//     res.json({
-//       message: "Verification complete",
-//       paidOrders: paid,
-//       deletedOrders: deleted,
-//     });
-//   } catch (error) {
-//     res.status(500).json({ erroror: "Server error", details: error });
-//   }
-// };

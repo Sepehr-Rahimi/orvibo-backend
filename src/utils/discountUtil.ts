@@ -1,4 +1,5 @@
 import { initModels } from "../models/init-models";
+import { calculateDiscountAmount } from "./mathUtils";
 
 interface validateProps {
   code: string;
@@ -24,7 +25,7 @@ export const validateDiscount = async (
       return { success: false, message: "کدتخفیف منقضی شده" };
     }
 
-    // بررسی تعداد استفاده مجاز
+    // check discount max uses
     if (
       discount.max_uses &&
       discount?.used_count &&
@@ -62,7 +63,10 @@ export const validateDiscount = async (
     if (discount.type === "fixed") {
       discount_amount = discount.value;
     } else if (discount.type === "percentage") {
-      const calculatedDiscount = (orderCost * discount.value) / 100;
+      const calculatedDiscount = calculateDiscountAmount(
+        orderCost,
+        discount.value
+      );
       if (
         discount.max_amount &&
         discount.max_amount > 0 &&
@@ -80,5 +84,14 @@ export const validateDiscount = async (
     };
   } catch (error) {
     throw error;
+  }
+};
+
+export const useDiscountCode = async (discountCode: string) => {
+  try {
+    const discount = await discounts.findOne({ where: { code: discountCode } });
+    discount?.increment("used_count");
+  } catch (error) {
+    console.log("we have an error :", error);
   }
 };

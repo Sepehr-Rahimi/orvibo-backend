@@ -1,40 +1,21 @@
-import axios from "axios";
 import { initModels } from "../models/init-models";
 import OpenAI from "openai";
+import {
+  dataBaseEmbeddingFormat,
+  normalizePersian,
+} from "../utils/embeddingUtil";
 
 const products = initModels().products;
 const embedding = initModels().products_embedding;
 
-export function normalizePersian(text: string) {
-  return text
-    .replace(/ي/g, "ی")
-    .replace(/ك/g, "ک")
-    .replace(/\u200c/g, " ")
-    .replace(/[^\p{L}\p{N}\s]/gu, "")
-    .replace(/[\n\r\t]+/g, " ")
-    .trim();
-}
-
 export async function setEmbeddingToProducts() {
-  const items = await products.findAll({});
+  const items = await products.findAll();
 
   const sources = items.map((prod) =>
-    normalizePersian(
-      `${prod.name}` + ` - ${prod.summary ?? ""} - ${prod.description ?? ""}`
-    )
+    normalizePersian(`${prod.name}` + ` \n ${prod.summary}}`)
   );
 
   try {
-    // const res = await axios.post(
-    //   "https://router.huggingface.co/hf-inference/models/intfloat/multilingual-e5-large/pipeline/feature-extraction",
-    //   { inputs: sources },
-    //   {
-    //     headers: {
-    //       Authorization: `Bearer ${process.env.HUGGING_FACE_TOKEN}`,
-    //       "Content-Type": "application/json",
-    //     },
-    //   }
-    // );
     const openAi = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
     const response = await openAi.embeddings.create({
@@ -53,7 +34,9 @@ export async function setEmbeddingToProducts() {
         where: { product_id: items[i].id },
       });
 
-      const formatedEmbedding = `[${embeddings[i].embedding.join(",")}]`;
+      const formatedEmbedding = dataBaseEmbeddingFormat(
+        embeddings[i].embedding
+      );
       if (alreadyEmbed) {
         await alreadyEmbed.update({ embedding: formatedEmbedding });
       } else {
@@ -69,15 +52,15 @@ export async function setEmbeddingToProducts() {
   }
 }
 
-// setEmbeddingToProducts();
+setEmbeddingToProducts();
 
-export async function matchEmbeddingToProducts() {
-  // const allProducts = await products.findAll();
-  const productsEmbedding = await embedding.findAll();
+// export async function matchEmbeddingToProducts() {
+//   // const allProducts = await products.findAll();
+//   const productsEmbedding = await embedding.findAll();
 
-  productsEmbedding.map(async (singleEmbed) => {
-    const targetProduct = await products.findByPk(singleEmbed.product_id);
-    await targetProduct?.update({ embedding_id: singleEmbed.id });
-    console.log(`product ${targetProduct?.name} updated`);
-  });
-}
+//   productsEmbedding.map(async (singleEmbed) => {
+//     const targetProduct = await products.findByPk(singleEmbed.product_id);
+//     await targetProduct?.update({ embedding_id: singleEmbed.id });
+//     console.log(`product ${targetProduct?.name} updated`);
+//   });
+// }

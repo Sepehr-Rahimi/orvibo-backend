@@ -1,21 +1,27 @@
-import { Request, Response } from "express";
+import { Request, response, Response } from "express";
 import { initModels } from "../models/init-models";
-import { fileUrlToPath, formatedFileUrl } from "../utils/formatedFileUrl";
-import { updateFile } from "../utils/updateFile";
-import { deleteFile } from "../utils/deleteFile";
 import {
-  getChildCategories,
-  getParentCategories,
-} from "../utils/categoryUtils";
+  extractImages,
+  fileUrlToPath,
+  formatedFileUrl,
+} from "../utils/fileUtils";
+import { deleteFile } from "../utils/fileUtils";
+import { getChildCategories } from "../utils/categoryUtils";
 import { Op, Sequelize } from "sequelize";
-import { log } from "node:console";
 import paginationUtil from "../utils/paginationUtil";
-import axios from "axios";
-import { normalizePersian } from "../scripts/papulateEmbeddings";
-import { createProductEmbedding } from "../utils/embeddingUtil";
-import similarity from "compute-cosine-similarity";
+import { normalizePersian } from "../utils/embeddingUtil";
+import {
+  createProductEmbedding,
+  dataBaseEmbeddingFormat,
+} from "../utils/embeddingUtil";
 import sequelize from "../config/database";
-import { l2Distance } from "pgvector/sequelize";
+import {
+  calculateDiscountPercentagePrice,
+  calculateDiscountPercentage,
+  calculateIrPriceByCurrency,
+  calculateNewPriceByNewCurrency,
+} from "../utils/mathUtils";
+import { modifyDiscountPrice } from "../utils/productUtils";
 
 const Product = initModels().products;
 const Categories = initModels().categories;
@@ -39,6 +45,7 @@ export const createProduct = async (
       colors,
       sizes,
       stock,
+      slug,
       main_features,
       description,
       kinds,
@@ -51,13 +58,10 @@ export const createProduct = async (
     } = req.body;
 
     // Handle images
-    const images = Array.isArray(req.files)
-      ? req.files.map((file: Express.Multer.File) =>
-          file.path.replace(/\\/g, "/")
-        )
-      : [];
+    const images = extractImages(req.files);
 
     const currency = await variables.findOne({ where: { name: "currency" } });
+
     if (!currency) {
       res.status(422).json({ message: "نرخ دلار پیدا نشد", success: false });
       await transaction?.rollback();
@@ -66,15 +70,17 @@ export const createProduct = async (
 
     const currentCurrency = +currency.value;
 
-    const productPrice =
-      Math.ceil((productCurrency * currentCurrency) / 10000) * 10000;
+    const productPrice = calculateIrPriceByCurrency(
+      productCurrency,
+      currentCurrency
+    );
     let discount_price = 0;
 
     if (discount_percentage && discount_percentage > 0)
-      discount_price =
-        Math.ceil(
-          (productPrice - (productPrice * discount_percentage) / 100) / 10000
-        ) * 10000;
+      discount_price = calculateDiscountPercentagePrice(
+        productPrice,
+        discount_percentage
+      );
 
     const newProduct = await Product.create(
       {
@@ -86,6 +92,7 @@ export const createProduct = async (
         colors,
         sizes,
         stock,
+        slug,
         images,
         main_features,
         description,
@@ -101,9 +108,9 @@ export const createProduct = async (
       { transaction }
     );
 
-    const embedText = normalizePersian(`${name} - ${summary} - ${description}`);
-
+    const embedText = normalizePersian(`${name} - ${summary}`);
     const embedding = await createProductEmbedding(embedText);
+
     if (!embedding) {
       res.status(400).json({
         message: "somthing went wrong with embedding",
@@ -114,7 +121,7 @@ export const createProduct = async (
       return;
     }
 
-    const formatedEmbedding = `[${embedding.join(",")}]`;
+    const formatedEmbedding = dataBaseEmbeddingFormat(embedding);
 
     const embed = await ProductEmbedding.create(
       {
@@ -303,8 +310,10 @@ export const adminProductList = async (
     const formattedProducts = products.map((product) => {
       let discount_percentage = 0;
       if (product.discount_price) {
-        discount_percentage =
-          ((product.price - product.discount_price) / product.price) * 100;
+        discount_percentage = calculateDiscountPercentage(
+          product.price,
+          product.discount_price
+        );
       }
       return {
         ...product.dataValues,
@@ -328,6 +337,7 @@ export const adminProductList = async (
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 export const searchProduct = async (
   req: Request,
   res: Response
@@ -344,6 +354,21 @@ export const searchProduct = async (
     };
   }
 
+  if (params?.category_name) {
+    const categoryName = decodeURIComponent(params.category_name.toString());
+    const selectedCategory = await Categories.findOne({
+      where: { name: categoryName },
+    });
+
+    const categoryId = selectedCategory?.id;
+
+    if (categoryId) {
+      const parents = await getChildCategories(+categoryId);
+      const categoriesIdList = parents.map((c) => c.id);
+      whereClause.category_id = { [Op.in]: categoriesIdList };
+    }
+  }
+
   const paginate = paginationUtil(req, res);
 
   try {
@@ -351,7 +376,14 @@ export const searchProduct = async (
       limit: paginate && paginate.limit,
       offset: paginate && paginate.offset,
       where: whereClause,
-      order: [["created_at", "DESC"]],
+      order: [
+        [Sequelize.literal('"products"."stock" > 0'), "DESC"],
+        [
+          params?.sort?.toString() || "created_at",
+          params?.order?.toString() || "DESC",
+        ],
+        ["id", "DESC"],
+      ],
       include: [
         {
           model: Categories,
@@ -431,6 +463,48 @@ export const singleProductByName = async (
     res.status(500).json({ success: false, message: "Server error." });
   }
 };
+
+export const singleProductBySlug = async (req: Request, res: Response) => {
+  const { slug } = req.params;
+
+  console.log(slug);
+  if (!slug) {
+    res.status(400).json({ message: "slug is required", success: false });
+    return;
+  }
+
+  try {
+    const product = await Product.findOne({
+      where: { slug },
+      include: [
+        {
+          model: Categories,
+          as: "category",
+        },
+        {
+          model: Brand,
+          as: "brand",
+        },
+      ],
+    });
+    if (!product) {
+      res.status(404).json({ message: "cant find product", success: false });
+      return;
+    }
+
+    res.status(200).json({
+      product: {
+        ...product.dataValues,
+        images: product.images?.map((image) => formatedFileUrl(image)),
+      },
+      success: true,
+    });
+  } catch (error) {
+    res.status(500).json({ message: "server error" });
+    console.log(error);
+  }
+};
+
 export const singleProduct = async (
   req: Request,
   res: Response
@@ -470,8 +544,10 @@ export const singleProduct = async (
 
     let discount_percentage = 0;
     if (product.discount_price) {
-      discount_percentage =
-        ((product.price - product.discount_price) / product.price) * 100;
+      discount_percentage = calculateDiscountPercentage(
+        product.price,
+        product.discount_price
+      );
     }
 
     res.status(200).json({
@@ -520,7 +596,10 @@ export const adminSingleProduct = async (
     let discount_percentage = 0;
 
     if (product.discount_price)
-      discount_percentage = (product?.discount_price / product.price) * 100;
+      discount_percentage = calculateDiscountPercentage(
+        product.price,
+        product.discount_price
+      );
 
     res.status(200).json({
       success: true,
@@ -550,6 +629,7 @@ export const updateProduct = async (
       colors,
       sizes,
       stock,
+      slug,
       main_features,
       description,
       kinds,
@@ -590,7 +670,7 @@ export const updateProduct = async (
       (name && product?.name !== name) ||
       (description && product?.description !== description)
     ) {
-      const text = normalizePersian(`${name} - ${summary} - ${description}`);
+      const text = normalizePersian(`${name} - ${summary}`);
       const newEmbedding = await createProductEmbedding(text);
       if (!newEmbedding) {
         res.status(400).json({
@@ -599,7 +679,7 @@ export const updateProduct = async (
         });
         return;
       }
-      embedding = `[${newEmbedding.join(",")}]`;
+      embedding = dataBaseEmbeddingFormat(newEmbedding);
       await targetProductEmbedding?.update({ embedding });
     }
 
@@ -656,29 +736,46 @@ export const updateProduct = async (
 
     const productCurrency = NewproductCurrency ?? product.currency_price;
     let productPrice = product.price;
-    const currentProductCurrency = product.currency_price;
+    let productDiscountPrice = product.discount_price ?? 0;
+
+    const currentProductCurrency = product.currency_price ?? 0;
     if (currentProductCurrency !== productCurrency) {
       const currency = await variables.findOne({ where: { name: "currency" } });
       if (!currency) {
         res.status(422).json({ message: "نرخ پیدا نشد", success: false });
         return;
       }
-      productPrice =
-        Math.ceil((productCurrency * +currency?.value) / 10000) * 10000;
+      const productDiscountPercentage = calculateDiscountPercentage(
+        productPrice,
+        productDiscountPrice
+      );
+      productPrice = calculateIrPriceByCurrency(
+        productCurrency,
+        +currency.value
+      );
+      productDiscountPrice = calculateDiscountPercentagePrice(
+        productPrice,
+        productDiscountPercentage
+      );
+
+      // how to update productDiscountPrice...?
     }
 
-    let current_discount_price = 0;
-    if (discount_percentage && discount_percentage > 0) {
-      current_discount_price =
-        Math.ceil(
-          (productPrice - (productPrice * discount_percentage) / 100) / 10000
-        ) * 10000;
+    if (
+      discount_percentage &&
+      discount_percentage >= 0 &&
+      discount_percentage < 100
+    ) {
+      productDiscountPrice = modifyDiscountPrice(
+        discount_percentage,
+        productPrice
+      );
     }
 
     await product.update({
       name,
       price: productPrice,
-      discount_price: current_discount_price,
+      discount_price: productDiscountPrice,
       summary,
       colors,
       sizes: sizes || [],
@@ -691,6 +788,7 @@ export const updateProduct = async (
       brand_id,
       code,
       label,
+      slug,
       is_published: is_published == "true",
       images: updatedImages,
       currency_price: productCurrency,
@@ -831,10 +929,24 @@ export const similarProducts = async (
       return;
     }
 
-    const formatted = JSON.parse(selectedProductEmbedding.embedding);
+    const formattedEmbedding = JSON.parse(selectedProductEmbedding.embedding);
 
     const foundProductsId = await ProductEmbedding.findAll({
-      order: l2Distance("embedding", formatted, sequelize),
+      where: { id: { [Op.notIn]: [selectedProductEmbedding.id] } },
+      order: [
+        // [
+        //   sequelize.literal(`embedding <=> '${JSON.stringify(inputVector)}'`),
+        //   "ASC",
+        // ],
+        // Or with pgvector helper:
+        // l2Distance("embedding", inputVector, sequelize),
+        [
+          sequelize.literal(
+            `1 - (embedding <=> '${JSON.stringify(formattedEmbedding)}')`
+          ),
+          "DESC",
+        ],
+      ],
       limit: 8,
       attributes: ["id", "product_id"],
     });
@@ -857,37 +969,6 @@ export const similarProducts = async (
       ...p.dataValues,
       images: p.images?.map((image) => formatedFileUrl(image)),
     }));
-
-    // const allProducts = await Product.findAll({
-    //   where: {
-    //     id: { [Op.ne]: parsedId },
-    //   },
-    //   include: [{ model: ProductEmbedding, as: "productEmbedding" }],
-    // });
-
-    // const results = allProducts.map((prod) => {
-    //   const prodEmbedding = prod.productEmbedding?.embedding ?? [];
-    //   if (prodEmbedding.length !== product.productEmbedding.embedding?.length)
-    //     return null;
-
-    //   return {
-    //     ...prod.toJSON(),
-    //     similarityScore: similarity(
-    //       product?.productEmbedding?.embedding,
-    //       prodEmbedding
-    //     ),
-    //     images: prod.images?.map((image) => formatedFileUrl(image)),
-    //   };
-    // });
-
-    // const machedResault = results
-    //   .sort((a, b) => {
-    //     const bSimilarity = b?.similarityScore ?? 0;
-    //     const aSimilarity = a?.similarityScore ?? 0;
-    //     return bSimilarity - aSimilarity;
-    //   })
-    //   .filter((prod) => prod?.similarityScore && prod?.similarityScore > 0.75)
-    //   .slice(0, 8);
 
     res.status(200).json({ success: true, data: formatedProducts });
   } catch (error) {

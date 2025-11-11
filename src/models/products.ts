@@ -4,6 +4,7 @@ import { DataTypes, Model, Optional } from "sequelize";
 export interface productsAttributes {
   id: number;
   name: string;
+  slug: string;
   price: number;
   discount_price?: number;
   summary?: string;
@@ -33,6 +34,7 @@ export type productsOptionalAttributes =
   | "discount_price"
   | "summary"
   | "colors"
+  | "slug"
   | "sizes"
   | "stock"
   | "images"
@@ -61,6 +63,7 @@ export class products
   [x: string]: any;
   id!: number;
   name!: string;
+  slug!: string;
   price!: number;
   discount_price?: number;
   summary?: string;
@@ -109,6 +112,10 @@ export class products
         name: {
           type: DataTypes.STRING(255),
           allowNull: false,
+        },
+        slug: {
+          type: DataTypes.STRING(255),
+          allowNull: true,
         },
         price: {
           type: DataTypes.DECIMAL,

@@ -10,6 +10,7 @@ import {
   similarProducts,
   singleProduct,
   singleProductByName,
+  singleProductBySlug,
   updateProduct,
 } from "../controllers/productController";
 import productImageUpload from "../config/multer/productImageUpload";
@@ -27,6 +28,8 @@ router.get("/search", searchProduct);
 router.get("/one/:id", singleProduct);
 
 router.get("/name/:name", singleProductByName);
+
+router.get("/slug/:slug", singleProductBySlug);
 
 router.get("/admin_one/:id", authenticateAdminToken, adminSingleProduct);
 

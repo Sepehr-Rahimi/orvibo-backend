@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { initModels } from "../models/init-models";
-import dayjs from "dayjs";
-import { Op } from "sequelize";
+import { calculateIrPriceByCurrency, roundToNearest } from "../utils/mathUtils";
 
 const variables = initModels().variables;
 const products = initModels().products;
@@ -11,7 +10,6 @@ export const UpdateCurrency = async (
   res: Response
 ): Promise<void> => {
   const { newCurrency } = req.body;
-  // console.log(newCurrency);
   if (!newCurrency) {
     res
       .status(422)
@@ -19,8 +17,12 @@ export const UpdateCurrency = async (
     return;
   }
 
+  const transaction = await variables.sequelize?.transaction();
   try {
-    const currency = await variables.findOne({ where: { name: "currency" } });
+    const currency = await variables.findOne({
+      where: { name: "currency" },
+      transaction,
+    });
     if (!currency) {
       res
         .status(400)
@@ -30,46 +32,44 @@ export const UpdateCurrency = async (
     // const oldCurrency = +currency.value;
     // const thirtyDaysAgo = dayjs().subtract(30, "day").toDate();
 
-    const allProducts = await products
-      .findAll
+    const allProducts = await products.findAll(
       //   {
       //   // get the products that created before 30 days
       //   where: { created_at: { [Op.lt]: thirtyDaysAgo } },
       // }
-      ();
+      { transaction }
+    );
 
-    // console.log(allProducts);
-    // console.log(differencePercentage);
+    await Promise.all(
+      allProducts.map(async (product) => {
+        const productCurrency = product?.currency_price;
 
-    allProducts.map(async (product) => {
-      const productCurrency = product?.currency_price;
-      // const newPrice =
-      //   Math.round((product.price * differencePercentage) / 10000) * 10000;
+        // new productprice based its currency and new difined currency
+        const productNewPrice = productCurrency
+          ? calculateIrPriceByCurrency(productCurrency, newCurrency)
+          : product.price;
 
-      const newPrice = productCurrency
-        ? Math.round((productCurrency * newCurrency) / 10000) * 10000
-        : product.price;
-      const differencePercentage = newPrice / product.price;
+        const priceRatio = productNewPrice / product.price;
 
-      const newDiscountPrice = product.discount_price
-        ? Math.round((product.discount_price * differencePercentage) / 10000) *
-          10000
-        : undefined;
-      // const newDiscountPrice = product.discount_price  && productCurrency? productCurrency
+        const newDiscountPrice = product.discount_price
+          ? roundToNearest(product.discount_price * priceRatio)
+          : undefined;
 
-      // console.log("product price :", product.price);
-      // console.log("new price : ", newPrice);
-      // console.log("discountPrice : ", product.discount_price);
-      // console.log("new discountPrice", newDiscountPrice);
-      await product.update({
-        price: newPrice,
-        discount_price: newDiscountPrice || 0,
-      });
-    });
-    await currency.update({ value: newCurrency });
+        await product.update(
+          {
+            price: productNewPrice,
+            discount_price: newDiscountPrice || 0,
+          },
+          { transaction }
+        );
+      })
+    );
+    await currency.update({ value: newCurrency }, { transaction });
 
+    await transaction?.commit();
     res.status(200).json({ message: "با موفقیت انجام شد", success: true });
   } catch (error) {
+    await transaction?.rollback();
     res.status(500).json({ message: error, success: false });
     console.log(error);
   }

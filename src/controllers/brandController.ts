@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 import { initModels } from "../models/init-models";
-import { formatedFileUrl } from "../utils/formatedFileUrl";
-import { updateFile } from "../utils/updateFile";
-import { deleteFile } from "../utils/deleteFile";
+import { formatedFileUrl } from "../utils/fileUtils";
+import { updateFile } from "../utils/fileUtils";
+import { deleteFile } from "../utils/fileUtils";
 
 const Brand = initModels().brands;
 
