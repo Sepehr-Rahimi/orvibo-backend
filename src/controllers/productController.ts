@@ -56,6 +56,7 @@ export const createProduct = async (
       label,
       is_published,
       variants,
+      weight,
     } = req.body;
 
     // Handle images
@@ -103,6 +104,7 @@ export const createProduct = async (
         brand_id,
         code,
         label,
+        weight,
         is_published: is_published === "true",
         // embedding,
       }
@@ -714,6 +716,7 @@ export const updateProduct = async (
       is_published,
       orderImages,
       variants,
+      weight,
     } = req.body;
 
     // console.log(is_published);
@@ -721,6 +724,8 @@ export const updateProduct = async (
     const { id } = req.params;
 
     const product = await Product.findByPk(id, { transaction });
+
+    const productWeight = weight ?? product?.weight;
 
     const currency = await variables.findOne({
       where: { name: "currency" },
@@ -877,6 +882,7 @@ export const updateProduct = async (
         slug,
         is_published: is_published == "true",
         images: updatedImages,
+        weight: productWeight,
         // currency_price: productCurrency,
         // embedding,
       },

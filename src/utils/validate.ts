@@ -64,6 +64,7 @@ export const createProductsSchema = Joi.object({
   is_published: Joi.boolean(),
   // main_features: Joi.array().items(Joi.string()),
   variants: Joi.array().required(),
+  weight: Joi.number(),
 });
 
 export const updateProductsSchema = Joi.object({
@@ -87,6 +88,7 @@ export const updateProductsSchema = Joi.object({
   images: Joi.array().items(Joi.string()),
   orderImages: Joi.array(),
   variants: Joi.array(),
+  weight: Joi.number(),
 });
 
 export const createAddressSchema = Joi.object({
