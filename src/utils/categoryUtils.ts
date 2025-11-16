@@ -9,6 +9,8 @@ const Category = initModels().categories;
 export const getParentCategories = async (
   categoryId: number
 ): Promise<categoriesAttributes[]> => {
+  if (!categoryId) return [];
+
   const parentCategories: categoriesAttributes[] = [];
 
   let currentCategory = await Category.findByPk(categoryId);
@@ -26,7 +28,7 @@ export const getParentCategories = async (
     }
   }
 
-  return parentCategories.reverse(); // Optional: Reverse to show from topmost parent to immediate parent
+  return parentCategories.reverse(); // Reverse to show from topmost parent to immediate parent
 };
 
 export const getChildCategories = async (

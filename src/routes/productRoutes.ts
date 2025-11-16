@@ -5,6 +5,7 @@ import {
   createProduct,
   deleteProduct,
   deleteProductImages,
+  getProductCategories,
   productList,
   searchProduct,
   similarProducts,
@@ -54,5 +55,7 @@ router.post("/delete/:id", authenticateAdminToken, deleteProduct);
 router.post("/delete_images/:id", authenticateAdminToken, deleteProductImages);
 
 router.get("/similar_products", similarProducts);
+
+router.get("/product-category", getProductCategories);
 
 export default router;

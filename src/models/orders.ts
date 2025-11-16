@@ -1,8 +1,11 @@
 import * as Sequelize from "sequelize";
 import { DataTypes, Model, Optional } from "sequelize";
+import type { addresses, addressesId } from "./addresses";
+import type { order_items, order_itemsId } from "./order_items";
+import type { users, usersId } from "./users";
 
 export interface ordersAttributes {
-  id: number;
+  id?: number;
   user_id: number;
   address_id: number;
   total_cost: number;
@@ -10,20 +13,22 @@ export interface ordersAttributes {
   discount_amount?: number;
   delivery_cost: number;
   type_of_delivery: string;
-  type_of_payment: string;
   status: string;
+  created_at?: Date;
+  type_of_payment: string;
   payment_authority?: string;
-  payment_status?: number;
-  created_at: Date;
+  payment_status: number;
 }
 
 export type ordersPk = "id";
 export type ordersId = orders[ordersPk];
 export type ordersOptionalAttributes =
-  | "id"
   | "discount_code"
   | "discount_amount"
-  | "created_at";
+  | "created_at"
+  | "payment_authority"
+  | "payment_status"
+  | "id";
 export type ordersCreationAttributes = Optional<
   ordersAttributes,
   ordersOptionalAttributes
@@ -40,34 +45,63 @@ export class orders
   discount_code?: string;
   discount_amount?: number;
   delivery_cost!: number;
-  other_costs!: number;
   type_of_delivery!: string;
-  type_of_payment!: string;
   status!: string;
-  payment_authority!: string;
-  payment_status?: number;
-  created_at!: Date;
+  created_at?: Date;
+  type_of_payment!: string;
+  payment_authority?: string;
+  payment_status!: number;
 
-  static associate(models: any) {
-    this.belongsTo(models.addresses, {
-      foreignKey: "address_id",
-      // as: "address",
-    });
-    this.belongsTo(models.users, {
-      foreignKey: "user_id",
-      // as: "user",
-    });
-    this.hasMany(models.order_items, {
-      foreignKey: "order_id",
-      // as: "order_items",
-    });
-  }
+  // orders belongsTo addresses via address_id
+  address!: addresses;
+  getAddress!: Sequelize.BelongsToGetAssociationMixin<addresses>;
+  setAddress!: Sequelize.BelongsToSetAssociationMixin<addresses, addressesId>;
+  createAddress!: Sequelize.BelongsToCreateAssociationMixin<addresses>;
+  // orders hasMany order_items via order_id
+  order_items!: order_items[];
+  getOrder_items!: Sequelize.HasManyGetAssociationsMixin<order_items>;
+  setOrder_items!: Sequelize.HasManySetAssociationsMixin<
+    order_items,
+    order_itemsId
+  >;
+  addOrder_item!: Sequelize.HasManyAddAssociationMixin<
+    order_items,
+    order_itemsId
+  >;
+  addOrder_items!: Sequelize.HasManyAddAssociationsMixin<
+    order_items,
+    order_itemsId
+  >;
+  createOrder_item!: Sequelize.HasManyCreateAssociationMixin<order_items>;
+  removeOrder_item!: Sequelize.HasManyRemoveAssociationMixin<
+    order_items,
+    order_itemsId
+  >;
+  removeOrder_items!: Sequelize.HasManyRemoveAssociationsMixin<
+    order_items,
+    order_itemsId
+  >;
+  hasOrder_item!: Sequelize.HasManyHasAssociationMixin<
+    order_items,
+    order_itemsId
+  >;
+  hasOrder_items!: Sequelize.HasManyHasAssociationsMixin<
+    order_items,
+    order_itemsId
+  >;
+  countOrder_items!: Sequelize.HasManyCountAssociationsMixin;
+  // orders belongsTo users via user_id
+  user!: users;
+  getUser!: Sequelize.BelongsToGetAssociationMixin<users>;
+  setUser!: Sequelize.BelongsToSetAssociationMixin<users, usersId>;
+  createUser!: Sequelize.BelongsToCreateAssociationMixin<users>;
 
   static initModel(sequelize: Sequelize.Sequelize): typeof orders {
     return orders.init(
       {
         id: {
           autoIncrement: true,
+          autoIncrementIdentity: true,
           type: DataTypes.INTEGER,
           allowNull: false,
           primaryKey: true,
@@ -75,10 +109,18 @@ export class orders
         user_id: {
           type: DataTypes.INTEGER,
           allowNull: false,
+          references: {
+            model: "users",
+            key: "id",
+          },
         },
         address_id: {
           type: DataTypes.INTEGER,
           allowNull: false,
+          references: {
+            model: "addresses",
+            key: "id",
+          },
         },
         total_cost: {
           type: DataTypes.DECIMAL,
@@ -100,13 +142,15 @@ export class orders
           type: DataTypes.STRING(50),
           allowNull: false,
         },
-        type_of_payment: {
-          type: DataTypes.STRING(50),
-          allowNull: false,
-        },
         status: {
           type: DataTypes.STRING(50),
           allowNull: false,
+          comment: "1 order submitted | 2 order delivered | 3 order canceled ",
+        },
+        type_of_payment: {
+          type: DataTypes.STRING,
+          allowNull: false,
+          comment: "1 credit card payment | 2 cash on delivery",
         },
         payment_authority: {
           type: DataTypes.STRING(255),
@@ -116,10 +160,7 @@ export class orders
           type: DataTypes.INTEGER,
           allowNull: false,
           defaultValue: 0,
-        },
-        created_at: {
-          type: DataTypes.DATE,
-          allowNull: true,
+          comment: "0 not paid | 1 paid",
         },
       },
       {
@@ -127,7 +168,6 @@ export class orders
         tableName: "orders",
         schema: "public",
         timestamps: true,
-        createdAt: "created_at",
         indexes: [
           {
             name: "orders_pkey",
@@ -135,15 +175,6 @@ export class orders
             fields: [{ name: "id" }],
           },
         ],
-        // validate: {
-        //   userOrGuest() {
-        //     if (!this.user_id && !(this.guest_name && this.guest_phone)) {
-        //       throw new Error(
-        //         "Either user_id must be set OR guest_name and guest_phone must be provided"
-        //       );
-        //     }
-        //   },
-        // },
       }
     );
   }

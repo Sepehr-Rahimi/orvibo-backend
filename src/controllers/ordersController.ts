@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import {
+  addresses,
   addressesAttributes,
   initModels,
   order_items,
@@ -26,12 +27,12 @@ interface OrderItemsWithProduct extends order_items {
 }
 
 interface OrdersWithOrderItems extends orders {
-  order_items?: OrderItemsWithProduct[];
+  order_items: OrderItemsWithProduct[];
 }
 
 interface orderWithAddressAndItems extends orders {
-  order_items?: order_itemsAttributes[];
-  address?: addressesAttributes;
+  order_items: order_items[];
+  address: addresses;
 }
 
 const models = initModels();
@@ -40,6 +41,7 @@ const OrderItems = models.order_items;
 const Address = models.addresses;
 const Product = models.products;
 const users = models.users;
+const ProductVariants = models.products_variants;
 
 export const createOrder = async (
   req: AuthenticatedRequest,
@@ -67,12 +69,13 @@ export const createOrder = async (
     let description: string = "";
 
     for (const item of items) {
-      const product = await products.findByPk(item.product_id);
-      if (product && product?.stock) {
-        const newProdDescription = `${product.name} : ${item.quantity} \n`;
+      const itemVariant = await ProductVariants.findByPk(item.variant_id);
+      // const product = await products.findByPk(item.product_id)
+      if (itemVariant && itemVariant?.stock) {
+        const newProdDescription = `${itemVariant.product_id} : ${item.quantity} \n`;
         description = description + newProdDescription;
 
-        if (item.quantity > product.stock) {
+        if (item.quantity > itemVariant.stock) {
           res.status(422).json({
             success: false,
             message: "متاسفانه محصول مورد نظر به مقدار تعیین شده موجود نیست.",
@@ -80,9 +83,9 @@ export const createOrder = async (
           return;
         }
         const productPrice: number =
-          product?.discount_price && product.discount_price > 0
-            ? product.discount_price
-            : product.price;
+          itemVariant?.discount_price && itemVariant?.discount_price > 0
+            ? itemVariant.discount_price
+            : itemVariant.price;
         total_cost += productPrice * item.quantity;
       }
     }
@@ -228,17 +231,17 @@ export const adminCreateOrder = async (
 
     for (const item of items) {
       // console.log(item, "item ");
-      const product = await products.findByPk(item.product_id);
+      const itemVariant = await ProductVariants.findByPk(item.variant_id);
       // console.log(product, "product");
-      if (product && product?.stock) {
-        if (item.quantity > product.stock) {
+      if (itemVariant && itemVariant?.stock) {
+        if (item.quantity > itemVariant.stock) {
           res.status(422).json({
             success: false,
             message: "متاسفانه محصول مورد نظر به مقدار تعیین شده موجود نیست.",
           });
           return;
         }
-        const newProdDescription = `${product.name} : ${item.quantity} \n`;
+        const newProdDescription = `${itemVariant.product_id} : ${item.quantity} \n`;
         description = description + newProdDescription;
 
         const itemPrice: number = item?.discount_price || item.price;
@@ -391,7 +394,7 @@ export const listOrders = async (
   const user_id = req?.user?.id;
 
   interface OrdersWithTotalOrderItems extends orders {
-    order_items?: order_items[];
+    order_items: order_items[];
   }
 
   try {
@@ -418,6 +421,7 @@ export const listOrders = async (
     res.status(500).json({ success: false, message: "Server error" });
   }
 };
+
 export const listOrdersAdmin = async (
   req: AuthenticatedRequest,
   res: Response
@@ -425,7 +429,7 @@ export const listOrdersAdmin = async (
   // const user_id = req?.user?.id;
 
   interface OrdersWithTotalOrderItems extends orders {
-    order_items?: order_items[];
+    order_items: order_items[];
   }
 
   try {
@@ -441,7 +445,11 @@ export const listOrdersAdmin = async (
           "DESC",
         ],
       ],
-      include: [OrderItems, users, Address],
+      include: [
+        { model: OrderItems, as: "order_items" },
+        { model: users, as: "user" },
+        { model: Address, as: "address" },
+      ],
     });
 
     const ordersWithTotalQuantity = orders.map((order) => {
@@ -492,7 +500,7 @@ export const getOrder = async (
           ...item.toJSON(),
           product: {
             ...item.product.toJSON(),
-            images: item?.product?.images.map((image) =>
+            images: item?.product?.images?.map((image) =>
               formatedFileUrl(image)
             ), // Example change
           },
@@ -565,24 +573,29 @@ export const updateOrder = async (
       });
       await Promise.all(
         orderItems.map(async (orderItem) => {
-          const product = await products.findByPk(orderItem.product_id);
-          if (!product) {
+          const itemVariant = await ProductVariants.findByPk(
+            orderItem.variant_id
+          );
+          if (!itemVariant) {
             res
               .status(404)
               .json({ message: "cannot find the product", success: false });
             return;
           }
-          let productStock = product.stock;
+          let itemVariantStock = itemVariant.stock;
           if (["4"].includes(status)) {
-            productStock = productStock + orderItem.quantity;
+            itemVariantStock = itemVariantStock + orderItem.quantity;
           } else if (["2"].includes(status)) {
-            if (productStock <= 0) {
+            if (itemVariantStock <= 0) {
               res.status(422).json({ message: "out of stock", success: false });
               return;
             }
-            productStock = Math.max(productStock - orderItem.quantity, 0);
+            itemVariantStock = Math.max(
+              itemVariantStock - orderItem.quantity,
+              0
+            );
           }
-          product.update({ stock: productStock });
+          itemVariant.update({ stock: itemVariantStock });
         })
       );
       // for (const orderItem of orderItems) {
@@ -608,10 +621,10 @@ export const updateOrder = async (
     if (items) {
       for (const item of items) {
         // console.log(item, "item ");
-        const product = await products.findByPk(item.product_id);
+        const itemVariant = await ProductVariants.findByPk(item.variant_id);
         // console.log(product, "product");
-        if (product && product?.stock) {
-          if (item.quantity > product.stock) {
+        if (itemVariant && itemVariant?.stock) {
+          if (item.quantity > itemVariant.stock) {
             res.status(422).json({
               success: false,
               message: "متاسفانه محصول مورد نظر به مقدار تعیین شده موجود نیست.",
@@ -710,10 +723,6 @@ export const deleteOrder = async (
   }
 };
 
-interface OrderWithItems extends orders {
-  order_items?: order_items[];
-}
-
 export const verifyPayment = async (
   req: Request,
   res: Response
@@ -752,16 +761,16 @@ export const verifyPayment = async (
 
     if (verifyResult.code === 100 || verifyResult.code === 101) {
       for (const item of items) {
-        const product = await Product.findByPk(item.product_id);
+        const itemVariant = await ProductVariants.findByPk(item.variant_id);
         if (
-          product &&
-          product.stock &&
+          itemVariant &&
+          itemVariant.stock &&
           order.payment_status == 0 &&
           order.type_of_payment == "1"
           // order.type_of_delivery == "1"
         ) {
-          const newStock = Math.max(product.stock - item.quantity, 0);
-          await product.update({ stock: newStock });
+          const newStock = Math.max(itemVariant.stock - item.quantity, 0);
+          await itemVariant.update({ stock: newStock });
         }
       }
       await order.update({ payment_status: 1 });

@@ -51,18 +51,19 @@ export const createProductsSchema = Joi.object({
   description: Joi.string().required(),
   code: Joi.string().required(),
   model: Joi.string().required(),
-  stock: Joi.string().required(),
+  // stock: Joi.string().required(),
   category_id: Joi.string().required(),
   brand_id: Joi.string().required(),
-  colors: Joi.array().items(Joi.string()),
-  sizes: Joi.array().items(Joi.string()),
+  // colors: Joi.array().items(Joi.string()),
+  // sizes: Joi.array().items(Joi.string()),
   slug: Joi.string().required(),
-  kinds: Joi.array().items(Joi.string()),
+  // kinds: Joi.array().items(Joi.string()),
   label: Joi.string().allow(""),
-  currency_price: Joi.string().required(),
-  discount_percentage: Joi.string(),
+  // currency_price: Joi.string().required(),
+  // discount_percentage: Joi.string(),
   is_published: Joi.boolean(),
-  main_features: Joi.array().items(Joi.string()),
+  // main_features: Joi.array().items(Joi.string()),
+  variants: Joi.array().required(),
 });
 
 export const updateProductsSchema = Joi.object({
@@ -85,6 +86,7 @@ export const updateProductsSchema = Joi.object({
   main_features: Joi.array().items(Joi.string()),
   images: Joi.array().items(Joi.string()),
   orderImages: Joi.array(),
+  variants: Joi.array(),
 });
 
 export const createAddressSchema = Joi.object({

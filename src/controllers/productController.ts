@@ -28,33 +28,34 @@ const Categories = initModels().categories;
 const Brand = initModels().brands;
 const ProductEmbedding = initModels().products_embedding;
 const variables = initModels().variables;
+const ProductVariants = initModels().products_variants;
 
 export const createProduct = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const transaction = await Product.sequelize?.transaction();
+  // const transaction = await sequelize?.transaction();
 
   try {
     const {
       name,
       // price,
-      currency_price: productCurrency,
-      discount_percentage,
+      // currency_price: productCurrency,
+      // discount_percentage,
       summary,
-      colors,
-      sizes,
-      stock,
+      // colors,
+      // sizes,
+      // stock,
       slug,
-      main_features,
+      // main_features,
       description,
-      kinds,
       model,
       category_id,
       brand_id,
       code,
       label,
       is_published,
+      variants,
     } = req.body;
 
     // Handle images
@@ -64,39 +65,39 @@ export const createProduct = async (
 
     if (!currency) {
       res.status(422).json({ message: "نرخ دلار پیدا نشد", success: false });
-      await transaction?.rollback();
+      // await transaction?.rollback();
       return;
     }
 
     const currentCurrency = +currency.value;
 
-    const productPrice = calculateIrPriceByCurrency(
-      productCurrency,
-      currentCurrency
-    );
-    let discount_price = 0;
+    // const productPrice = calculateIrPriceByCurrency(
+    //   productCurrency,
+    //   currentCurrency
+    // );
+    // let discount_price = 0;
 
-    if (discount_percentage && discount_percentage > 0)
-      discount_price = calculateDiscountPercentagePrice(
-        productPrice,
-        discount_percentage
-      );
+    // if (discount_percentage && discount_percentage > 0)
+    //   discount_price = calculateDiscountPercentagePrice(
+    //     productPrice,
+    //     discount_percentage
+    //   );
 
     const newProduct = await Product.create(
       {
         name,
-        price: productPrice,
-        currency_price: productCurrency,
-        discount_price,
+        // price: productPrice,
+        // currency_price: productCurrency,
+        // discount_price,
         summary,
-        colors,
-        sizes,
-        stock,
+        // colors,
+        // sizes,
+        // stock,
         slug,
         images,
-        main_features,
+        // main_features,
         description,
-        kinds,
+        // kinds,
         model,
         category_id,
         brand_id,
@@ -104,33 +105,79 @@ export const createProduct = async (
         label,
         is_published: is_published === "true",
         // embedding,
-      },
-      { transaction }
+      }
+      // { transaction }
     );
 
-    const embedText = normalizePersian(`${name} - ${summary}`);
-    const embedding = await createProductEmbedding(embedText);
+    // const embedText = normalizePersian(`${name} - ${summary}`);
+    // const embedding = await createProductEmbedding(embedText);
 
-    if (!embedding) {
-      res.status(400).json({
-        message: "somthing went wrong with embedding",
-        success: false,
+    //     id!: number;
+    // product_id!: number;
+    // color!: string;
+    // kind?: string;
+    // stock?: number;
+    // currency_price?: number;
+    // price?: number;
+    // discount_price?: number;
+    // is_published?: boolean;
+
+    for (const singleVariant of variants) {
+      const {
+        currency_price,
+        color,
+        discount_percentage,
+        is_published,
+        stock,
+      } = singleVariant;
+      if (!currency_price || !color || !stock) {
+        res.status(400).json({
+          message: "please enter full information for currency",
+          success: false,
+        });
+        return;
+      }
+      let variantDiscountPrice = 0;
+      const variantPrice = calculateIrPriceByCurrency(
+        currency_price,
+        currentCurrency
+      );
+      if (discount_percentage && discount_percentage > 0) {
+        variantDiscountPrice = calculateDiscountPercentagePrice(
+          variantPrice,
+          discount_percentage
+        );
+      }
+      await ProductVariants.create({
+        color,
+        product_id: newProduct.id,
+        currency_price,
+        discount_price: variantDiscountPrice,
+        is_published,
+        price: variantPrice,
+        stock,
       });
-      await transaction?.rollback();
-
-      return;
     }
 
-    const formatedEmbedding = dataBaseEmbeddingFormat(embedding);
+    // if (!embedding) {
+    //   res.status(400).json({
+    //     message: "somthing went wrong with embedding",
+    //     success: false,
+    //   });
+    //   // await transaction?.rollback();
 
-    const embed = await ProductEmbedding.create(
-      {
-        embedding: formatedEmbedding,
-        product_id: newProduct.id,
-      },
-      { transaction }
-    );
-    await newProduct.update({ embedding_id: embed.id }, { transaction });
+    //   return;
+    // }
+
+    // const formatedEmbedding = dataBaseEmbeddingFormat(embedding);
+
+    // await ProductEmbedding.create(
+    //   {
+    //     embedding: formatedEmbedding,
+    //     product_id: newProduct.id,
+    //   }
+    //   // { transaction }
+    // );
 
     res.status(201).json({
       message: "Product created successfully",
@@ -139,11 +186,11 @@ export const createProduct = async (
         images: newProduct.images?.map((image) => formatedFileUrl(image)),
       },
     });
-    await transaction?.commit();
+    // await transaction?.commit();
   } catch (error) {
     console.error("Error creating product:", error);
     res.status(500).json({ error: "Internal server error" });
-    await transaction?.rollback();
+    // await transaction?.rollback();
   }
 };
 
@@ -213,7 +260,7 @@ export const productList = async (
       offset: paginate && paginate.offset,
       where: whereClause,
       order: [
-        [Sequelize.literal('"products"."stock" > 0'), "DESC"],
+        // [Sequelize.literal('"products"."stock" > 0'), "DESC"],
 
         [
           params?.sort?.toString() || "created_at",
@@ -229,6 +276,10 @@ export const productList = async (
         {
           model: Brand,
           as: "brand",
+        },
+        {
+          model: ProductVariants,
+          as: "variants",
         },
       ],
     });
@@ -304,20 +355,24 @@ export const adminProductList = async (
           model: Brand,
           as: "brand",
         },
+        {
+          model: ProductVariants,
+          as: "variants",
+        },
       ],
     });
 
     const formattedProducts = products.map((product) => {
-      let discount_percentage = 0;
-      if (product.discount_price) {
-        discount_percentage = calculateDiscountPercentage(
-          product.price,
-          product.discount_price
-        );
-      }
+      // let discount_percentage = 0;
+      // if (product.discount_price) {
+      //   discount_percentage = calculateDiscountPercentage(
+      //     product.price,
+      //     product.discount_price
+      //   );
+      // }
       return {
         ...product.dataValues,
-        discount_percentage,
+        // discount_percentage,
         images: product.images?.map((image) => formatedFileUrl(image)),
       };
     });
@@ -393,6 +448,10 @@ export const searchProduct = async (
           model: Brand,
           as: "brand",
         },
+        {
+          model: ProductVariants,
+          as: "variants",
+        },
       ],
     });
 
@@ -437,6 +496,7 @@ export const singleProductByName = async (
           model: Brand,
           as: "brand",
         },
+        { model: ProductVariants, as: "variants" },
       ],
     });
     if (!product) {
@@ -485,6 +545,10 @@ export const singleProductBySlug = async (req: Request, res: Response) => {
           model: Brand,
           as: "brand",
         },
+        {
+          model: ProductVariants,
+          as: "variants",
+        },
       ],
     });
     if (!product) {
@@ -528,6 +592,10 @@ export const singleProduct = async (
           model: Brand,
           as: "brand",
         },
+        {
+          model: ProductVariants,
+          as: "variants",
+        },
       ],
     });
     if (!product) {
@@ -542,19 +610,19 @@ export const singleProduct = async (
       return;
     }
 
-    let discount_percentage = 0;
-    if (product.discount_price) {
-      discount_percentage = calculateDiscountPercentage(
-        product.price,
-        product.discount_price
-      );
-    }
+    // let discount_percentage = 0;
+    // if (product.discount_price) {
+    //   discount_percentage = calculateDiscountPercentage(
+    //     product.price,
+    //     product.discount_price
+    //   );
+    // }
 
     res.status(200).json({
       success: true,
       data: {
         ...product.dataValues,
-        discount_percentage,
+        // discount_percentage,
         images: product.images?.map((image) => formatedFileUrl(image)),
       },
     });
@@ -586,6 +654,10 @@ export const adminSingleProduct = async (
           model: Brand,
           as: "brand",
         },
+        {
+          model: ProductVariants,
+          as: "variants",
+        },
       ],
     });
     if (!product) {
@@ -593,19 +665,19 @@ export const adminSingleProduct = async (
       return;
     }
 
-    let discount_percentage = 0;
+    // let discount_percentage = 0;
 
-    if (product.discount_price)
-      discount_percentage = calculateDiscountPercentage(
-        product.price,
-        product.discount_price
-      );
+    // if (product.discount_price)
+    //   discount_percentage = calculateDiscountPercentage(
+    //     product.price,
+    //     product.discount_price
+    //   );
 
     res.status(200).json({
       success: true,
       data: {
         ...product.dataValues,
-        discount_percentage,
+        // discount_percentage,
         images: product.images?.map((image) => formatedFileUrl(image)),
       },
     });
@@ -619,20 +691,21 @@ export const updateProduct = async (
   req: Request,
   res: Response
 ): Promise<void> => {
+  const transaction = await sequelize.transaction();
   try {
     const {
       name,
       // price,
-      currency_price: NewproductCurrency,
-      discount_percentage,
+      // currency_price: NewproductCurrency,
+      // discount_percentage,
       summary,
-      colors,
-      sizes,
-      stock,
+      // colors,
+      // sizes,
+      // stock,
       slug,
-      main_features,
+      // main_features,
       description,
-      kinds,
+      // kinds,
       model,
       category_id,
       brand_id,
@@ -640,22 +713,34 @@ export const updateProduct = async (
       label,
       is_published,
       orderImages,
+      variants,
     } = req.body;
 
     // console.log(is_published);
 
     const { id } = req.params;
 
-    const product = await Product.findByPk(id);
+    const product = await Product.findByPk(id, { transaction });
 
-    const targetProductEmbedding = await ProductEmbedding.findByPk(
-      product?.embedding_id
-    );
+    const currency = await variables.findOne({
+      where: { name: "currency" },
+      transaction,
+    });
+    if (!currency) {
+      res.status(404).json({ message: "cannot find currency", success: false });
+      return;
+    }
+    const currentCurrency = +currency.value;
 
     if (!product) {
       res.status(404).json({ error: "Product not found." });
       return;
     }
+
+    const targetProductEmbedding = await ProductEmbedding.findOne({
+      where: { product_id: product.id },
+      transaction,
+    });
 
     // const images = Array.isArray(req.files)
     //   ? req.files.map((file: Express.Multer.File) =>
@@ -663,25 +748,25 @@ export const updateProduct = async (
     //     )
     //   : [];
 
-    let embedding = targetProductEmbedding?.embedding;
+    // let embedding = targetProductEmbedding?.embedding;
 
-    if (
-      (summary && product?.summary !== summary) ||
-      (name && product?.name !== name) ||
-      (description && product?.description !== description)
-    ) {
-      const text = normalizePersian(`${name} - ${summary}`);
-      const newEmbedding = await createProductEmbedding(text);
-      if (!newEmbedding) {
-        res.status(400).json({
-          message: "somthing went wrong with embedding",
-          success: false,
-        });
-        return;
-      }
-      embedding = dataBaseEmbeddingFormat(newEmbedding);
-      await targetProductEmbedding?.update({ embedding });
-    }
+    // if (
+    //   (summary && product?.summary !== summary) ||
+    //   (name && product?.name !== name) ||
+    //   (description && product?.description !== description)
+    // ) {
+    //   const text = normalizePersian(`${name} - ${summary}`);
+    //   const newEmbedding = await createProductEmbedding(text);
+    //   if (!newEmbedding) {
+    //     res.status(400).json({
+    //       message: "somthing went wrong with embedding",
+    //       success: false,
+    //     });
+    //     return;
+    //   }
+    //   embedding = dataBaseEmbeddingFormat(newEmbedding);
+    //   await targetProductEmbedding?.update({ embedding }, { transaction });
+    // }
 
     // const newImages = Array.isArray(req.files)
     //   ? req.files.map((file: Express.Multer.File) =>
@@ -734,66 +819,118 @@ export const updateProduct = async (
     //   :
     // console.log("images:", updatedImages);
 
-    const productCurrency = NewproductCurrency ?? product.currency_price;
-    let productPrice = product.price;
-    let productDiscountPrice = product.discount_price ?? 0;
+    // const productCurrency = NewproductCurrency ?? product.currency_price;
+    // let productPrice = product.price;
+    // let productDiscountPrice = product.discount_price ?? 0;
 
-    const currentProductCurrency = product.currency_price ?? 0;
-    if (currentProductCurrency !== productCurrency) {
-      const currency = await variables.findOne({ where: { name: "currency" } });
-      if (!currency) {
-        res.status(422).json({ message: "نرخ پیدا نشد", success: false });
-        return;
+    // const currentProductCurrency = product.currency_price ?? 0;
+    // if (currentProductCurrency !== productCurrency) {
+    //   const currency = await variables.findOne({ where: { name: "currency" } });
+    //   if (!currency) {
+    //     res.status(422).json({ message: "نرخ پیدا نشد", success: false });
+    //     return;
+    //   }
+    //   const productDiscountPercentage = calculateDiscountPercentage(
+    //     productPrice,
+    //     productDiscountPrice
+    //   );
+    //   productPrice = calculateIrPriceByCurrency(
+    //     productCurrency,
+    //     +currency.value
+    //   );
+    //   productDiscountPrice = calculateDiscountPercentagePrice(
+    //     productPrice,
+    //     productDiscountPercentage
+    //   );
+
+    //   // how to update productDiscountPrice...?
+    // }
+
+    // if (
+    //   discount_percentage &&
+    //   discount_percentage >= 0 &&
+    //   discount_percentage < 100
+    // ) {
+    //   productDiscountPrice = modifyDiscountPrice(
+    //     discount_percentage,
+    //     productPrice
+    //   );
+    // }
+
+    await product.update(
+      {
+        name,
+        // price: productPrice,
+        // discount_price: productDiscountPrice,
+        summary,
+        // colors,
+        // sizes: sizes || [],
+        // stock,
+        // main_features,
+        description,
+        // kinds: kinds || [],
+        model,
+        category_id,
+        brand_id,
+        code,
+        label,
+        slug,
+        is_published: is_published == "true",
+        images: updatedImages,
+        // currency_price: productCurrency,
+        // embedding,
+      },
+      { transaction }
+    );
+
+    if (variants) {
+      await ProductVariants.destroy({
+        where: { product_id: product.id },
+        transaction,
+      });
+
+      for (const singleVariant of variants) {
+        const {
+          currency_price,
+          color,
+          discount_percentage,
+          is_published,
+          stock,
+        } = singleVariant;
+        if (!currency_price || !color || !stock) {
+          res.status(400).json({
+            message: "please enter full information for currency",
+            success: false,
+          });
+          return;
+        }
+        let variantDiscountPrice = 0;
+        const variantPrice = calculateIrPriceByCurrency(
+          currency_price,
+          currentCurrency
+        );
+        if (discount_percentage && discount_percentage > 0) {
+          variantDiscountPrice = calculateDiscountPercentagePrice(
+            variantPrice,
+            discount_percentage
+          );
+        }
+        await ProductVariants.create(
+          {
+            color,
+            product_id: product.id,
+            currency_price,
+            discount_price: variantDiscountPrice,
+            is_published,
+            price: variantPrice,
+            stock,
+          },
+          { transaction }
+        );
       }
-      const productDiscountPercentage = calculateDiscountPercentage(
-        productPrice,
-        productDiscountPrice
-      );
-      productPrice = calculateIrPriceByCurrency(
-        productCurrency,
-        +currency.value
-      );
-      productDiscountPrice = calculateDiscountPercentagePrice(
-        productPrice,
-        productDiscountPercentage
-      );
-
-      // how to update productDiscountPrice...?
     }
 
-    if (
-      discount_percentage &&
-      discount_percentage >= 0 &&
-      discount_percentage < 100
-    ) {
-      productDiscountPrice = modifyDiscountPrice(
-        discount_percentage,
-        productPrice
-      );
-    }
-
-    await product.update({
-      name,
-      price: productPrice,
-      discount_price: productDiscountPrice,
-      summary,
-      colors,
-      sizes: sizes || [],
-      stock,
-      main_features,
-      description,
-      kinds: kinds || [],
-      model,
-      category_id,
-      brand_id,
-      code,
-      label,
-      slug,
-      is_published: is_published == "true",
-      images: updatedImages,
-      currency_price: productCurrency,
-      // embedding,
-    });
+    await transaction.commit();
 
     res.status(200).json({
       message: "Product updated successfully",
@@ -805,6 +942,7 @@ export const updateProduct = async (
   } catch (error) {
     console.error("Error updating product:", error);
     res.status(500).json({ success: false, message: "Server error." });
+    await transaction.rollback();
   }
 };
 export const deleteProductImages = async (
@@ -871,9 +1009,13 @@ export const deleteProduct = async (
     }
 
     const product = await Product.findByPk(parsedId);
-    const targetEmbedding = await ProductEmbedding.findByPk(
-      product?.embedding_id
-    );
+    if (!product) {
+      res.status(404).json({ message: "cannot found product", success: false });
+      return;
+    }
+    // const targetEmbedding = await ProductEmbedding.findOne({
+    //   where: { product_id: product.id },
+    // });
 
     if (!product) {
       res.status(400).json({ success: false, message: "Product not found." });
@@ -882,7 +1024,7 @@ export const deleteProduct = async (
 
     product.images?.forEach((image) => deleteFile(image));
     await product.destroy();
-    await targetEmbedding?.destroy();
+    // await targetEmbedding?.destroy();
 
     res
       .status(200)
@@ -917,9 +1059,9 @@ export const similarProducts = async (
       return;
     }
 
-    const selectedProductEmbedding = await ProductEmbedding.findByPk(
-      product.embedding_id
-    );
+    const selectedProductEmbedding = await ProductEmbedding.findOne({
+      where: { product_id: product.id },
+    });
 
     // console.log(typeof selectedProductEmbedding?.embedding);
     if (!selectedProductEmbedding) {
@@ -962,6 +1104,7 @@ export const similarProducts = async (
           model: Brand,
           as: "brand",
         },
+        { model: ProductVariants, as: "variants" },
       ],
     });
 
@@ -974,5 +1117,47 @@ export const similarProducts = async (
   } catch (error) {
     console.log(error);
     throw error;
+  }
+};
+
+export const getProductCategories = async (req: Request, res: Response) => {
+  try {
+    let formatedData = [];
+    const categories = await Categories.findAll({
+      where: { parent_id: { [Op.is]: null as any } },
+    });
+
+    // const products = await Product.findAll({
+    //   where: {
+    //     category_id: {
+    //       [Op.in]: [...categories.map((category) => category.id)],
+    //     },
+    //   },
+    //   limit: 6,
+    // });
+
+    for (const category of categories) {
+      const productsCategory = await Product.findAll({
+        where: { category_id: category.id },
+        limit: 6,
+      });
+
+      formatedData.push({
+        categoryName: category.name,
+        products: [
+          ...productsCategory.map((product) => ({
+            ...product.dataValues,
+            images: product.dataValues?.images?.map((image) =>
+              formatedFileUrl(image)
+            ),
+          })),
+        ],
+      });
+    }
+
+    res.status(200).json({ success: true, data: formatedData });
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ success: false, message: "server error" });
   }
 };

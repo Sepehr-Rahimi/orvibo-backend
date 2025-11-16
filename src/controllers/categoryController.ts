@@ -4,6 +4,7 @@ import { formatedFileUrl } from "../utils/fileUtils";
 import { updateFile } from "../utils/fileUtils";
 import { deleteFile } from "../utils/fileUtils";
 import { getParentCategories } from "../utils/categoryUtils";
+import { Op } from "sequelize";
 
 const Category = initModels().categories;
 
@@ -45,7 +46,7 @@ export const categoryList = async (
   req: Request,
   res: Response
 ): Promise<void> => {
-  const parent_id = req.params?.parent_id || null;
+  const parent_id = req.params?.parent_id ?? null;
 
   try {
     // Fetch all categories from the database
@@ -80,10 +81,10 @@ export const allCategoryList = async (
 ): Promise<void> => {
   try {
     // Fetch all categories from the database
-    const categories = await Category.findAll({});
+    const categories = await Category.findAll();
 
     // Check if there are no categories found
-    if (categories.length === 0) {
+    if (categories?.length === 0) {
       res.status(200).json({ success: true, data: [] });
       return;
     }

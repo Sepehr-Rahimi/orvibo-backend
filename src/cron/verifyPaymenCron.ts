@@ -6,7 +6,7 @@ import { Op } from "sequelize";
 import { sendSmsSuccessOrder } from "../utils/smsUtils";
 
 interface OrderWithItems extends orders {
-  order_items?: order_items[];
+  order_items: order_items[];
 }
 
 // const Order = initModels().orders;
@@ -20,6 +20,7 @@ const {
   order_items: orderItems,
   verification_codes,
   addresses,
+  products_variants,
   users,
 } = initModels();
 
@@ -45,7 +46,7 @@ cron.schedule("*/30 * * * *", async () => {
     try {
       const amount = order.total_cost;
       const paymentStatus = await RequestVerifyPayment({
-        authority: order.payment_authority,
+        authority: order?.payment_authority || "",
         amount,
       });
 
@@ -53,13 +54,16 @@ cron.schedule("*/30 * * * *", async () => {
       if (paymentResult?.code === 100 || paymentResult?.code === 101) {
         const items = order.order_items || [];
         for (const item of items) {
-          const product = await Product.findByPk(item.product_id, {
-            transaction,
-          });
-          if (!product) continue;
+          const itemVariant = await products_variants.findByPk(
+            item.variant_id,
+            {
+              transaction,
+            }
+          );
+          if (!itemVariant) continue;
           // reduce product stock
-          const newStock = Math.max(product?.stock - item.quantity, 0);
-          await product.update({ stock: newStock }, { transaction });
+          const newStock = Math.max(itemVariant?.stock - item.quantity, 0);
+          await itemVariant.update({ stock: newStock }, { transaction });
         }
         // const user = await users.findByPk(order.user_id, { transaction });
         const address = await addresses.findByPk(order.address_id, {

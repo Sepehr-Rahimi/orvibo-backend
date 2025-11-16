@@ -17,7 +17,7 @@ import cors from "cors";
 import path from "path";
 import bodyParser from "body-parser";
 import "./cron/verifyPaymenCron";
-import "./cron/dailyDiscount";
+// import "./cron/dailyDiscount";
 
 dotenv.config();
 

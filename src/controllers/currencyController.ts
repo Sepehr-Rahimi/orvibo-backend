@@ -3,6 +3,7 @@ import { initModels } from "../models/init-models";
 import { calculateIrPriceByCurrency, roundToNearest } from "../utils/mathUtils";
 
 const variables = initModels().variables;
+const productVariants = initModels().products_variants;
 const products = initModels().products;
 
 export const UpdateCurrency = async (
@@ -32,7 +33,7 @@ export const UpdateCurrency = async (
     // const oldCurrency = +currency.value;
     // const thirtyDaysAgo = dayjs().subtract(30, "day").toDate();
 
-    const allProducts = await products.findAll(
+    const allProductVariants = await productVariants.findAll(
       //   {
       //   // get the products that created before 30 days
       //   where: { created_at: { [Op.lt]: thirtyDaysAgo } },
@@ -41,23 +42,23 @@ export const UpdateCurrency = async (
     );
 
     await Promise.all(
-      allProducts.map(async (product) => {
-        const productCurrency = product?.currency_price;
+      allProductVariants.map(async (variant) => {
+        const variantCurrency = variant?.currency_price;
 
-        // new productprice based its currency and new difined currency
-        const productNewPrice = productCurrency
-          ? calculateIrPriceByCurrency(productCurrency, newCurrency)
-          : product.price;
+        // new variantprice based its currency and new difined currency
+        const variantNewPrice = variantCurrency
+          ? calculateIrPriceByCurrency(variantCurrency, newCurrency)
+          : variant.price;
 
-        const priceRatio = productNewPrice / product.price;
+        const priceRatio = variantNewPrice / variant.price;
 
-        const newDiscountPrice = product.discount_price
-          ? roundToNearest(product.discount_price * priceRatio)
+        const newDiscountPrice = variant.discount_price
+          ? roundToNearest(variant.discount_price * priceRatio)
           : undefined;
 
-        await product.update(
+        await variant.update(
           {
-            price: productNewPrice,
+            price: variantNewPrice,
             discount_price: newDiscountPrice || 0,
           },
           { transaction }
