@@ -20,11 +20,12 @@ export interface productsAttributes {
   is_published?: boolean;
   created_at?: Date;
   slug: string;
+  weight?: number;
 }
 
 export type productsPk = "id";
 export type productsId = products[productsPk];
-export type productsOptionalAttributes = "id" | "summary" | "images" | "description" | "model" | "category_id" | "brand_id" | "code" | "label" | "is_published" | "created_at";
+export type productsOptionalAttributes = "id" | "summary" | "images" | "description" | "model" | "category_id" | "brand_id" | "code" | "label" | "is_published" | "created_at" | "weight";
 export type productsCreationAttributes = Optional<productsAttributes, productsOptionalAttributes>;
 
 export class products extends Model<productsAttributes, productsCreationAttributes> implements productsAttributes {
@@ -41,6 +42,7 @@ export class products extends Model<productsAttributes, productsCreationAttribut
   is_published?: boolean;
   created_at?: Date;
   slug!: string;
+  weight?: number;
 
   // products belongsTo brands via brand_id
   brand!: brands;
@@ -149,6 +151,11 @@ export class products extends Model<productsAttributes, productsCreationAttribut
     slug: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    weight: {
+      type: DataTypes.DECIMAL,
+      allowNull: true,
+      comment: "In kilograms"
     }
   }, {
     sequelize,
