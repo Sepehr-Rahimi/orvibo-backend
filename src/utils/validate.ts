@@ -123,15 +123,20 @@ export const createOrderSchema = Joi.object({
   type_of_payment: Joi.string().required(),
   callback_url: Joi.string().allow(""),
   description: Joi.string().allow(""),
+  services: Joi.number(),
+  guarantee: Joi.number(),
+  businessProfit: Joi.number(),
   items: Joi.array()
     .items(
       Joi.object({
         product_id: Joi.number().required(),
+        variant_id: Joi.number().required(),
         quantity: Joi.number().required(),
         color: Joi.string().allow(null),
         size: Joi.string().allow(null),
         type: Joi.string().allow(null),
         price: Joi.number().required(),
+        discount_price: Joi.number().optional(),
       })
     )
     .required(),
@@ -233,10 +238,10 @@ export const updateDiscountCodeSchema = Joi.object({
 });
 
 export const createBannerSchema = Joi.object({
-  title: Joi.string().required(),
-  description: Joi.string().required(),
-  button_text: Joi.string().required(),
-  link: Joi.string().required(),
+  title: Joi.string(),
+  description: Joi.string(),
+  button_text: Joi.string(),
+  link: Joi.string(),
   is_published: Joi.boolean(),
 });
 
