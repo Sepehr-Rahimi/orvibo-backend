@@ -63,7 +63,7 @@ app.use("/api/variables", variablesRouter);
 
 app.use("/api/bank_accounts", bankAccountRouter);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5002;
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
