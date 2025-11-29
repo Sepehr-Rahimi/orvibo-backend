@@ -11,12 +11,13 @@ import discountCodesRoutes from "./routes/discountCodesRoutes";
 import bannerRoutes from "./routes/bannerRoutes";
 import verificationCodeRoutes from "./routes/verificaionCodeRoutes";
 import recommendRouter from "./routes/recommendRoutes";
-import currencyRouter from "./routes/currencyRoutes";
+import variablesRouter from "./routes/variablesRoutes";
 import bankAccountRouter from "./routes/bank_account";
 import cors from "cors";
 import path from "path";
 import bodyParser from "body-parser";
 import "./cron/verifyPaymenCron";
+import "./cron/updateUsdToIrr";
 // import "./cron/dailyDiscount";
 
 dotenv.config();
@@ -58,11 +59,11 @@ app.use("/api/recommend", recommendRouter);
 
 app.use("/uploads", express.static(path.join(__dirname, "../uploads")));
 
-app.use("/api/currency", currencyRouter);
+app.use("/api/variables", variablesRouter);
 
 app.use("/api/bank_accounts", bankAccountRouter);
 
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 5002;
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);

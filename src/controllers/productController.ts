@@ -1,5 +1,10 @@
 import { Request, response, Response } from "express";
-import { initModels } from "../models/init-models";
+import {
+  initModels,
+  products,
+  products_variants,
+  products_variantsAttributes,
+} from "../models/init-models";
 import {
   extractImages,
   fileUrlToPath,
@@ -21,7 +26,11 @@ import {
   calculateIrPriceByCurrency,
   calculateNewPriceByNewCurrency,
 } from "../utils/mathUtils";
-import { modifyDiscountPrice } from "../utils/productUtils";
+import { formatVariants, modifyDiscountPrice } from "../utils/productUtils";
+
+interface productWithVariants extends products {
+  variants?: products_variants[];
+}
 
 const Product = initModels().products;
 const Categories = initModels().categories;
@@ -56,6 +65,7 @@ export const createProduct = async (
       label,
       is_published,
       variants,
+      weight,
     } = req.body;
 
     // Handle images
@@ -103,6 +113,7 @@ export const createProduct = async (
         brand_id,
         code,
         label,
+        weight,
         is_published: is_published === "true",
         // embedding,
       }
@@ -252,12 +263,12 @@ export const productList = async (
     whereClause.discount_price = { [Op.gt]: 0 }; // Only products with discount_price > 0
   }
 
-  const paginate = paginationUtil(req, res);
+  // const paginate = paginationUtil(req, res);
 
   try {
     const { rows: products, count: total } = await Product.findAndCountAll({
-      limit: paginate && paginate.limit,
-      offset: paginate && paginate.offset,
+      // limit: paginate && paginate.limit,
+      // offset: paginate && paginate.offset,
       where: whereClause,
       order: [
         // [Sequelize.literal('"products"."stock" > 0'), "DESC"],
@@ -292,12 +303,12 @@ export const productList = async (
     res.status(200).json({
       success: true,
       products: formattedProducts,
-      pagination: paginate && {
-        page: paginate.page,
-        limit: paginate.limit,
-        total,
-        hasMore: paginate.offset + formattedProducts.length < total,
-      },
+      // pagination: paginate && {
+      //   page: paginate.page,
+      //   limit: paginate.limit,
+      //   total,
+      //   hasMore: paginate.offset + formattedProducts.length < total,
+      // },
     });
   } catch (error) {
     console.error("Error fetching products:", error);
@@ -432,7 +443,7 @@ export const searchProduct = async (
       offset: paginate && paginate.offset,
       where: whereClause,
       order: [
-        [Sequelize.literal('"products"."stock" > 0'), "DESC"],
+        // [Sequelize.literal('"products"."stock" > 0'), "DESC"],
         [
           params?.sort?.toString() || "created_at",
           params?.order?.toString() || "DESC",
@@ -527,14 +538,13 @@ export const singleProductByName = async (
 export const singleProductBySlug = async (req: Request, res: Response) => {
   const { slug } = req.params;
 
-  console.log(slug);
   if (!slug) {
     res.status(400).json({ message: "slug is required", success: false });
     return;
   }
 
   try {
-    const product = await Product.findOne({
+    const product: productWithVariants | null = await Product.findOne({
       where: { slug },
       include: [
         {
@@ -551,15 +561,34 @@ export const singleProductBySlug = async (req: Request, res: Response) => {
         },
       ],
     });
+
     if (!product) {
       res.status(404).json({ message: "cant find product", success: false });
       return;
     }
 
+    const dollarToIrrRecord = await variables.findOne({
+      where: { name: "usdToIrr" },
+    });
+
+    console.log("dollar exchange is : ", dollarToIrrRecord);
+
+    if (!dollarToIrrRecord) {
+      res
+        .status(404)
+        .json({ message: "can't find dollar exchange", success: false });
+      return;
+    }
+
+    const dollarToIrrExchange = +dollarToIrrRecord.value;
+
     res.status(200).json({
       product: {
         ...product.dataValues,
         images: product.images?.map((image) => formatedFileUrl(image)),
+        variants: product.variants
+          ? formatVariants(dollarToIrrExchange, product?.variants)
+          : undefined,
       },
       success: true,
     });
@@ -644,26 +673,40 @@ export const adminSingleProduct = async (
       return;
     }
 
-    const product = await Product.findByPk(parsedId, {
-      include: [
-        {
-          model: Categories,
-          as: "category",
-        },
-        {
-          model: Brand,
-          as: "brand",
-        },
-        {
-          model: ProductVariants,
-          as: "variants",
-        },
-      ],
-    });
+    const product: productWithVariants | null = await Product.findByPk(
+      parsedId,
+      {
+        include: [
+          {
+            model: Categories,
+            as: "category",
+          },
+          {
+            model: Brand,
+            as: "brand",
+          },
+          {
+            model: ProductVariants,
+            as: "variants",
+          },
+        ],
+      }
+    );
     if (!product) {
       res.status(400).json({ success: false, message: "Product not found." });
       return;
     }
+
+    const formatedVariants = product.variants?.map((singleVariant) => ({
+      ...singleVariant.dataValues,
+      discount_percentage:
+        singleVariant.discount_price && singleVariant.discount_price > 0
+          ? calculateDiscountPercentage(
+              singleVariant.price,
+              singleVariant?.discount_price
+            )
+          : 0,
+    }));
 
     // let discount_percentage = 0;
 
@@ -677,6 +720,7 @@ export const adminSingleProduct = async (
       success: true,
       data: {
         ...product.dataValues,
+        variants: formatedVariants,
         // discount_percentage,
         images: product.images?.map((image) => formatedFileUrl(image)),
       },
@@ -714,6 +758,7 @@ export const updateProduct = async (
       is_published,
       orderImages,
       variants,
+      weight,
     } = req.body;
 
     // console.log(is_published);
@@ -721,6 +766,8 @@ export const updateProduct = async (
     const { id } = req.params;
 
     const product = await Product.findByPk(id, { transaction });
+
+    const productWeight = weight ?? product?.weight;
 
     const currency = await variables.findOne({
       where: { name: "currency" },
@@ -877,6 +924,7 @@ export const updateProduct = async (
         slug,
         is_published: is_published == "true",
         images: updatedImages,
+        weight: productWeight,
         // currency_price: productCurrency,
         // embedding,
       },
@@ -1122,7 +1170,10 @@ export const similarProducts = async (
 
 export const getProductCategories = async (req: Request, res: Response) => {
   try {
+    const includeVariants = req.query?.includeVariants == "true";
+    // console.log(req.query);
     let formatedData = [];
+
     const categories = await Categories.findAll({
       where: { parent_id: { [Op.is]: null as any } },
     });
@@ -1139,7 +1190,10 @@ export const getProductCategories = async (req: Request, res: Response) => {
     for (const category of categories) {
       const productsCategory = await Product.findAll({
         where: { category_id: category.id },
-        limit: 6,
+        // limit: 6,
+        include: includeVariants
+          ? [{ model: ProductVariants, as: "variants" }]
+          : undefined,
       });
 
       formatedData.push({
@@ -1150,6 +1204,7 @@ export const getProductCategories = async (req: Request, res: Response) => {
             images: product.dataValues?.images?.map((image) =>
               formatedFileUrl(image)
             ),
+            ...(includeVariants ? {} : { variants: undefined }),
           })),
         ],
       });
