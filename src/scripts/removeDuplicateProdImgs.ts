@@ -19,6 +19,7 @@ async function cleanUpDuplicateImages() {
 
     allProducts.forEach((product) => {
       const productImages = product.images;
+      if (!productImages) return;
       for (const img of productImages) {
         usedImages.add(path.basename(img));
       }
@@ -58,6 +59,8 @@ const compareFolderImagesWithDb = async () => {
 
     allProducts.forEach((product) => {
       const productImages = product.images;
+      if (!productImages) return;
+
       for (const img of productImages) {
         // usedImages.push(path.basename(img));
         if (!allImagesInFolder.includes(path.basename(img))) {
