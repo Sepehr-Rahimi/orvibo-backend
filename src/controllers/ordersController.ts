@@ -18,9 +18,18 @@ import {
 } from "../utils/paymentUtils";
 import { useDiscountCode, validateDiscount } from "../utils/discountUtil";
 import { sendFactorSmsOrder, sendSmsSuccessOrder } from "../utils/smsUtils";
+import {
+  calculateIrPriceByCurrency,
+  calculatePercentage,
+  getCurrentPrice,
+} from "../utils/mathUtils";
 
 // type_of_payment === 1 : payment with bankaccount via zarinpal
 // type_of_payment === 0 : siteAdmin create factor
+
+// servicesCost : 15% of itemsCost
+// guaranteeCost : 5% of itemsCost
+// businessProfit : 10% of itemsCost
 
 interface OrderItemsWithProduct extends order_items {
   product: products;
@@ -42,6 +51,12 @@ const Address = models.addresses;
 const Product = models.products;
 const users = models.users;
 const ProductVariants = models.products_variants;
+const variables = models.variables;
+
+const guaranteePercentage = 5;
+const servicesPercentage = 9;
+const businessProfitPercentage = 10;
+const shippingCostPercentage = 40;
 
 export const createOrder = async (
   req: AuthenticatedRequest,
@@ -59,18 +74,90 @@ export const createOrder = async (
       type_of_delivery,
       type_of_payment,
       items,
+      services: predeterminedServicesCost,
+      guarantee: predeterminedGuaranteeCost,
+      businessProfit: predeterminedBusinessProfitCost,
+      shipping: predeterminedShipping,
     } = req.body;
 
     const t = await Orders.sequelize?.transaction();
+
+    const dollarToIrrRecord = await variables.findOne({
+      where: { name: "usdToIrr" },
+    });
+
+    if (!dollarToIrrRecord) {
+      res
+        .status(404)
+        .json({ message: "cant find the currency record", success: false });
+      return;
+    }
 
     let total_cost: number = 0;
     let discount_amount: number = 0;
     let delivery_cost: number = 0;
     let description: string = "";
 
+    let itemsCost = items?.reduce(
+      (
+        total: number,
+        item: { price: number; discount_price: number; quantity: number }
+      ) => {
+        const price = getCurrentPrice(item.price, item.discount_price);
+        return total + item.quantity * price;
+      },
+      0
+    );
+
+    // console.log(itemsCost);
+
+    let servicesCost = 0;
+    if (predeterminedServicesCost && predeterminedServicesCost > 0) {
+      servicesCost = calculatePercentage(servicesPercentage, itemsCost);
+      // console.log(servicesCost);
+      // console.log(predeterminedServicesCost);
+      if (predeterminedServicesCost !== servicesCost) {
+        res
+          .status(422)
+          .json({ message: "services cost dosent right", success: false });
+        return;
+      }
+    }
+
+    let guaranteeCost = 0;
+    if (predeterminedGuaranteeCost && predeterminedGuaranteeCost > 0) {
+      guaranteeCost = calculatePercentage(guaranteePercentage, itemsCost);
+      if (predeterminedGuaranteeCost !== guaranteeCost) {
+        res
+          .status(422)
+          .json({ message: "guarantee cost dosent right", success: false });
+        return;
+      }
+    }
+
+    const businessProfit = calculatePercentage(
+      businessProfitPercentage,
+      itemsCost
+    );
+    const shipping = calculatePercentage(shippingCostPercentage, itemsCost);
+
+    if (
+      businessProfit !== predeterminedBusinessProfitCost
+      // predeterminedShipping !== shipping
+    ) {
+      res.status(422).json({
+        message: "business profit amount dosent fit by its predetermited",
+      });
+      return;
+    }
+
     for (const item of items) {
+      console.log(item);
       const itemVariant = await ProductVariants.findByPk(item.variant_id);
-      // const product = await products.findByPk(item.product_id)
+      if (!itemVariant) {
+        res.status(404).json({ message: "محصول با مشخصات مورد نظر پیدا نشد" });
+        return;
+      }
       if (itemVariant && itemVariant?.stock) {
         const newProdDescription = `${itemVariant.product_id} : ${item.quantity} \n`;
         description = description + newProdDescription;
@@ -82,11 +169,6 @@ export const createOrder = async (
           });
           return;
         }
-        const productPrice: number =
-          itemVariant?.discount_price && itemVariant?.discount_price > 0
-            ? itemVariant.discount_price
-            : itemVariant.price;
-        total_cost += productPrice * item.quantity;
       }
     }
 
@@ -101,7 +183,7 @@ export const createOrder = async (
       // console.log(discountValidate);
       if (discountValidate.success && discountValidate?.discount_amount) {
         discount_amount = discountValidate.discount_amount;
-        total_cost = total_cost - discount_amount;
+        itemsCost = itemsCost - discount_amount;
         // increase the time of the discountcode that used
         await useDiscountCode(discount_code);
       } else {
@@ -109,7 +191,14 @@ export const createOrder = async (
       }
     }
 
-    // console.log(total_cost);
+    total_cost =
+      itemsCost + guaranteeCost + servicesCost + businessProfit + shipping;
+
+    const currency = +dollarToIrrRecord.value;
+    const irrPrice = calculateIrPriceByCurrency(total_cost, currency);
+
+    // if irr price more than 200m toman
+    const haveGateWayLimitation = irrPrice > 200000000;
 
     // const date = new Date();
     const newOrder = await Orders.create(
@@ -123,6 +212,10 @@ export const createOrder = async (
         type_of_delivery,
         status: "1",
         type_of_payment,
+        service_cost: servicesCost,
+        guarantee_cost: guaranteeCost,
+        business_profit: businessProfit,
+        shipping_cost: shipping,
         // id: date.getTime(),
       },
       { transaction: t }
@@ -150,7 +243,8 @@ export const createOrder = async (
     if (
       type_of_payment == 1 &&
       req.body?.callback_url &&
-      req.body?.description
+      req.body?.description &&
+      !haveGateWayLimitation
     ) {
       const paymentRequestResult = await RequestPayment({
         amount: total_cost,
@@ -191,10 +285,11 @@ export const createOrder = async (
     } else {
       await t?.commit();
 
-      res.status(201).json({
+      res.json({
         success: true,
         message: "Order created successfully",
-        order: newOrder,
+        // order: newOrder,
+        paymentUrl: `/products/checkout/finalize-order-payment?orderId=${newOrder.id}`,
       });
       return;
     }
@@ -402,7 +497,7 @@ export const listOrders = async (
       where: {
         user_id,
       },
-      include: [OrderItems],
+      include: [{ model: OrderItems, as: "order_items" }],
     });
 
     const ordersWithTotalQuantity = orders.map((order) => {
@@ -478,8 +573,12 @@ export const getOrder = async (
   try {
     const order: OrdersWithOrderItems | null = await Orders.findByPk(id, {
       include: [
-        { model: OrderItems, include: [Product] },
-        Address,
+        {
+          model: OrderItems,
+          as: "order_items",
+          include: [{ model: Product, as: "product" }],
+        },
+        { model: Address, as: "address" },
         { model: users, as: "user" },
       ],
     });
@@ -495,11 +594,17 @@ export const getOrder = async (
 
     if (order.order_items) {
       const modifiedOrder = {
-        ...order.toJSON(),
+        ...order.dataValues,
+        products_cost: order?.order_items.reduce(
+          (cost: number = 0, item) =>
+            cost +
+            getCurrentPrice(item.price, item.discount_price) * item.quantity,
+          0
+        ),
         order_items: order?.order_items.map((item) => ({
-          ...item.toJSON(),
+          ...item.dataValues,
           product: {
-            ...item.product.toJSON(),
+            ...item.product.dataValues,
             images: item?.product?.images?.map((image) =>
               formatedFileUrl(image)
             ), // Example change

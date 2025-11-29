@@ -97,3 +97,23 @@ export const GetCurrency = async (
     res.status(500).json({ message: errormessage, success: false });
   }
 };
+
+export const getDollarToIrrExchange = async (req: Request, res: Response) => {
+  try {
+    const dollarIrrRecord = await variables.findOne({
+      where: { name: "usdToIrr" },
+    });
+
+    if (!dollarIrrRecord) {
+      res
+        .status(404)
+        .json({ message: "cannot find the record", success: false });
+      return;
+    }
+
+    res.status(200).json({ data: dollarIrrRecord.value, success: true });
+  } catch (error) {
+    res.status(500).json({ message: "server error", success: false });
+    console.log(error);
+  }
+};
