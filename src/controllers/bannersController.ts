@@ -50,6 +50,10 @@ export const bannerList = async (
       where: {
         is_published: true,
       },
+      order: [
+        ["created_at", "DESC"],
+        ["id", "DESC"],
+      ],
     });
     const formattedBanners = banners.map((banner) => ({
       ...banner.dataValues,
