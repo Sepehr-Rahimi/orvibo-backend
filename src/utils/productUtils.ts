@@ -2,7 +2,7 @@ import {
   products_variants,
   products_variantsAttributes,
 } from "../models/products_variants";
-import { calculateDiscountPercentagePrice } from "./mathUtils";
+import { calculateDiscountPercentagePrice, getCurrentPrice } from "./mathUtils";
 
 export const modifyDiscountPrice = (
   discount_percentage: number,
@@ -18,8 +18,13 @@ export const formatVariants = (
   currency: number,
   variants: products_variants[]
 ) => {
-  return variants.map((singleVariant) => ({
-    ...singleVariant.dataValues,
-    irrExchange: Math.round(singleVariant.price * currency),
-  }));
+  return variants
+    .filter((singleVariant) => singleVariant.is_published)
+    .map((singleVariant) => ({
+      ...singleVariant.dataValues,
+      irrExchange: Math.round(
+        getCurrentPrice(singleVariant.price, singleVariant.discount_price) *
+          currency
+      ),
+    }));
 };

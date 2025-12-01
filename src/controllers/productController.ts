@@ -140,6 +140,7 @@ export const createProduct = async (
         discount_percentage,
         is_published,
         stock,
+        kind,
       } = singleVariant;
       if (!currency_price || !color || !stock) {
         res.status(400).json({
@@ -167,6 +168,7 @@ export const createProduct = async (
         is_published,
         price: variantPrice,
         stock,
+        kind,
       });
     }
 
@@ -567,11 +569,18 @@ export const singleProductBySlug = async (req: Request, res: Response) => {
       return;
     }
 
+    if (!product.is_published) {
+      res
+        .status(400)
+        .json({ success: false, message: "Product is not published." });
+      return;
+    }
+
     const dollarToIrrRecord = await variables.findOne({
       where: { name: "usdToIrr" },
     });
 
-    console.log("dollar exchange is : ", dollarToIrrRecord);
+    // console.log("dollar exchange is : ", dollarToIrrRecord);
 
     if (!dollarToIrrRecord) {
       res
@@ -944,6 +953,7 @@ export const updateProduct = async (
           discount_percentage,
           is_published,
           stock,
+          kind,
         } = singleVariant;
         if (!currency_price || !color || !stock) {
           res.status(400).json({
@@ -966,6 +976,7 @@ export const updateProduct = async (
         await ProductVariants.create(
           {
             color,
+            kind,
             product_id: product.id,
             currency_price,
             discount_price: variantDiscountPrice,
@@ -1196,18 +1207,19 @@ export const getProductCategories = async (req: Request, res: Response) => {
           : undefined,
       });
 
-      formatedData.push({
-        categoryName: category.name,
-        products: [
-          ...productsCategory.map((product) => ({
-            ...product.dataValues,
-            images: product.dataValues?.images?.map((image) =>
-              formatedFileUrl(image)
-            ),
-            ...(includeVariants ? {} : { variants: undefined }),
-          })),
-        ],
-      });
+      if (productsCategory.length)
+        formatedData.push({
+          categoryName: category.name,
+          products: [
+            ...productsCategory.map((product) => ({
+              ...product.dataValues,
+              images: product.dataValues?.images?.map((image) =>
+                formatedFileUrl(image)
+              ),
+              ...(includeVariants ? {} : { variants: undefined }),
+            })),
+          ],
+        });
     }
 
     res.status(200).json({ success: true, data: formatedData });

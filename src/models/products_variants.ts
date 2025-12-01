@@ -9,7 +9,7 @@ export interface products_variantsAttributes {
   color: string;
   kind?: string;
   stock: number;
-  currency_price?: number;
+  currency_price: number;
   price: number;
   discount_price?: number;
   is_published?: boolean;
@@ -21,7 +21,6 @@ export type products_variantsOptionalAttributes =
   | "id"
   | "kind"
   | "stock"
-  | "currency_price"
   | "price"
   | "discount_price"
   | "is_published";
@@ -42,7 +41,7 @@ export class products_variants
   color!: string;
   kind?: string;
   stock!: number;
-  currency_price?: number;
+  currency_price!: number;
   price!: number;
   discount_price?: number;
   is_published?: boolean;

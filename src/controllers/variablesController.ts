@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { initModels } from "../models/init-models";
-import { calculateIrPriceByCurrency, roundToNearest } from "../utils/mathUtils";
+import { calculateIrPriceByCurrency } from "../utils/mathUtils";
 
 const variables = initModels().variables;
 const productVariants = initModels().products_variants;
@@ -43,17 +43,18 @@ export const UpdateCurrency = async (
 
     await Promise.all(
       allProductVariants.map(async (variant) => {
-        const variantCurrency = variant?.currency_price;
+        const variantCurrency = variant.currency_price;
 
         // new variantprice based its currency and new difined currency
-        const variantNewPrice = variantCurrency
-          ? calculateIrPriceByCurrency(variantCurrency, newCurrency)
-          : variant.price;
+        const variantNewPrice = calculateIrPriceByCurrency(
+          variantCurrency,
+          newCurrency
+        );
 
         const priceRatio = variantNewPrice / variant.price;
 
         const newDiscountPrice = variant.discount_price
-          ? roundToNearest(variant.discount_price * priceRatio)
+          ? variant.discount_price * priceRatio
           : undefined;
 
         await variant.update(

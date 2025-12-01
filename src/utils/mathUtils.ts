@@ -2,7 +2,7 @@ export const calculateDiscountPercentagePrice = (
   itemPrice: number,
   discountPercentage: number
 ) => {
-  return roundToNearest(itemPrice - (itemPrice * discountPercentage) / 100);
+  return itemPrice - (itemPrice * discountPercentage) / 100;
 };
 
 export const calculateNewPriceByNewCurrency = (
@@ -10,7 +10,7 @@ export const calculateNewPriceByNewCurrency = (
   newCurrency: number,
   currentPrice: number
 ) => {
-  return roundToNearest(currentPrice * (newCurrency / oldCurrency));
+  return currentPrice * (newCurrency / oldCurrency);
 };
 
 export const calculateDiscountAmount = (price: number, percentage: number) => {
@@ -28,7 +28,7 @@ export const calculateIrPriceByCurrency = (
   itemCurrency: number,
   currentCurrency: number
 ) => {
-  return roundToNearest(itemCurrency * currentCurrency);
+  return itemCurrency * currentCurrency;
 };
 
 export const calculatePercentage = (percentage: number, price: number) =>
@@ -39,6 +39,6 @@ export const getCurrentPrice = (...prices: any[]) => {
   return valid.length > 0 ? Math.min(...valid) : 0;
 };
 
-export const roundToNearest = (value: number, unit: number = 10000) => {
-  return Math.ceil(value / unit) * unit;
-};
+// export const roundToNearest = (value: number, unit: number = 10000) => {
+//   return Math.ceil(value / unit) * unit;
+// };
