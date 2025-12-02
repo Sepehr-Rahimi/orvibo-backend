@@ -141,6 +141,7 @@ export const createProduct = async (
         is_published,
         stock,
         kind,
+        sku,
       } = singleVariant;
       if (!currency_price || !color || !stock) {
         res.status(400).json({
@@ -167,6 +168,7 @@ export const createProduct = async (
         discount_price: variantDiscountPrice,
         is_published,
         price: variantPrice,
+        sku,
         stock,
         kind,
       });
@@ -954,6 +956,7 @@ export const updateProduct = async (
           is_published,
           stock,
           kind,
+          sku,
         } = singleVariant;
         if (!currency_price || !color || !stock) {
           res.status(400).json({
@@ -977,6 +980,7 @@ export const updateProduct = async (
           {
             color,
             kind,
+            sku,
             product_id: product.id,
             currency_price,
             discount_price: variantDiscountPrice,

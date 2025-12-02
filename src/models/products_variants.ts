@@ -9,6 +9,7 @@ export interface products_variantsAttributes {
   color: string;
   kind?: string;
   stock: number;
+  sku?: string;
   currency_price: number;
   price: number;
   discount_price?: number;
@@ -22,6 +23,7 @@ export type products_variantsOptionalAttributes =
   | "kind"
   | "stock"
   | "price"
+  | "sku"
   | "discount_price"
   | "is_published";
 export type products_variantsCreationAttributes = Optional<
@@ -40,6 +42,7 @@ export class products_variants
   product_id!: number;
   color!: string;
   kind?: string;
+  sku?: string;
   stock!: number;
   currency_price!: number;
   price!: number;
@@ -105,6 +108,10 @@ export class products_variants
         color: {
           type: DataTypes.STRING,
           allowNull: false,
+        },
+        sku: {
+          type: DataTypes.STRING,
+          allowNull: true,
         },
         kind: {
           type: DataTypes.STRING,
