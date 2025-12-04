@@ -1185,6 +1185,7 @@ export const similarProducts = async (
 
 export const getProductCategories = async (req: Request, res: Response) => {
   try {
+    const includeProducts = req.query?.includeProducts == "true";
     const includeVariants = req.query?.includeVariants == "true";
     // console.log(req.query);
     let formatedData = [];
@@ -1211,19 +1212,23 @@ export const getProductCategories = async (req: Request, res: Response) => {
           : undefined,
       });
 
-      if (productsCategory.length)
-        formatedData.push({
-          categoryName: category.name,
-          products: [
-            ...productsCategory.map((product) => ({
-              ...product.dataValues,
-              images: product.dataValues?.images?.map((image) =>
-                formatedFileUrl(image)
-              ),
-              ...(includeVariants ? {} : { variants: undefined }),
-            })),
-          ],
-        });
+      if (productsCategory?.length)
+        formatedData.push(
+          includeProducts
+            ? {
+                categoryName: category.name,
+                products: [
+                  ...productsCategory.map((product) => ({
+                    ...product.dataValues,
+                    images: product.dataValues?.images?.map((image) =>
+                      formatedFileUrl(image)
+                    ),
+                    ...(includeVariants ? {} : { variants: undefined }),
+                  })),
+                ],
+              }
+            : { categoryName: category.name }
+        );
     }
 
     res.status(200).json({ success: true, data: formatedData });
