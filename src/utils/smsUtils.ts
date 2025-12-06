@@ -26,7 +26,7 @@ export const sendSmsSuccessOrder = async (
     axios.get("https://api.sms-webservice.com/api/V3/Send", {
       params: {
         apikey: process.env.SMS_SECRET,
-        text: `سلام ${name}\nسوژه مورد نظر خریداری شد و سفارشت درحال پیگیریه این شماره سفارشت:${orderId}\nاینم شماره تراکنشت : ${refId}\nنویان استور\nnoyanstore.com`,
+        text: `سلام ${name}\nمحصول مورد نظر خریداری شد و سفارشت درحال پیگیریه شماره سفارش:${orderId}\nشماره تراکنش : ${refId}\nایران ارویبو\niranorvibo.com`,
         sender: process.env.SMS_SENDER_PHONENUMBER,
         Recipients: phone,
       },

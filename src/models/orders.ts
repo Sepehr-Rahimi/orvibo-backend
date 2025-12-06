@@ -9,6 +9,7 @@ export interface ordersAttributes {
   user_id: number;
   address_id: number;
   total_cost: number;
+  irr_total_cost: number;
   discount_code?: string;
   discount_amount?: number;
   delivery_cost: number;
@@ -50,6 +51,7 @@ export class orders
   user_id!: number;
   address_id!: number;
   total_cost!: number;
+  irr_total_cost!: number;
   discount_code?: string;
   discount_amount?: number;
   delivery_cost!: number;
@@ -136,6 +138,10 @@ export class orders
         },
         total_cost: {
           type: DataTypes.DECIMAL,
+          allowNull: false,
+        },
+        irr_total_cost: {
+          type: DataTypes.INTEGER,
           allowNull: false,
         },
         service_cost: {

@@ -195,7 +195,9 @@ export const createOrder = async (
       itemsCost + guaranteeCost + servicesCost + businessProfit + shipping;
 
     const currency = +dollarToIrrRecord.value;
-    const irrPrice = calculateIrPriceByCurrency(total_cost, currency);
+    const irrPrice = Math.round(
+      calculateIrPriceByCurrency(total_cost, currency)
+    );
 
     // if irr price more than 200m toman
     const haveGateWayLimitation = irrPrice > 200000000;
@@ -206,6 +208,7 @@ export const createOrder = async (
         user_id,
         address_id,
         total_cost,
+        irr_total_cost: irrPrice,
         discount_code,
         discount_amount,
         delivery_cost,
@@ -247,7 +250,7 @@ export const createOrder = async (
       !haveGateWayLimitation
     ) {
       const paymentRequestResult = await RequestPayment({
-        amount: total_cost,
+        amount: irrPrice,
         callback_url: req.body?.callback_url,
         description,
         mobile: phone_number,
@@ -373,6 +376,7 @@ export const adminCreateOrder = async (
         user_id,
         address_id,
         total_cost,
+        irr_total_cost: total_cost,
         discount_amount,
         delivery_cost,
         type_of_delivery,
@@ -836,13 +840,16 @@ export const verifyPayment = async (
 
   const order: orderWithAddressAndItems | null = await orders.findOne({
     where: { payment_authority: authority },
-    include: [{ model: OrderItems }, Address],
+    include: [
+      { model: OrderItems, as: "order_items" },
+      { model: Address, as: "address" },
+    ],
   });
   if (!order || !order.order_items) {
     res.status(401).json({ message: "سفارش پیدا نشد", success: false });
     return;
   }
-  const amount = order?.total_cost;
+  const amount = order?.irr_total_cost;
   // console.log("here");
   // console.log(order);
   // console.log(authority);
@@ -874,8 +881,8 @@ export const verifyPayment = async (
           order.type_of_payment == "1"
           // order.type_of_delivery == "1"
         ) {
-          const newStock = Math.max(itemVariant.stock - item.quantity, 0);
-          await itemVariant.update({ stock: newStock });
+          // const newStock = Math.max(itemVariant.stock - item.quantity, 0);
+          // await itemVariant.update({ stock: newStock });
         }
       }
       await order.update({ payment_status: 1 });
