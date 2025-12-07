@@ -152,15 +152,21 @@ export const createOrderAdminSchema = Joi.object({
   type_of_payment: Joi.string().required(),
   callback_url: Joi.string().allow(""),
   description: Joi.string().allow(""),
+  servicesPercentage: Joi.number(),
+  guaranteePercentage: Joi.number(),
+  businessProfitPercentage: Joi.number(),
+  shippingPercentage: Joi.number(),
   items: Joi.array()
     .items(
       Joi.object({
         product_id: Joi.number().required(),
+        variant_id: Joi.number().required(),
         quantity: Joi.number().required(),
         color: Joi.string().allow(null),
         size: Joi.string().allow(null),
         type: Joi.string().allow(null),
         price: Joi.number().required(),
+        discount_price: Joi.number().optional(),
       })
     )
     .required(),

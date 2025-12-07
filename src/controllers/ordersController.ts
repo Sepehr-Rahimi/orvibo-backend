@@ -317,12 +317,17 @@ export const adminCreateOrder = async (
       // delivery_cost,
       type_of_delivery,
       type_of_payment,
+      servicesPercentage,
+      guaranteePercentage,
+      businessProfitPercentage,
+      shippingPercentage,
       items,
     } = req.body;
 
     const t = await Orders.sequelize?.transaction();
 
     let total_cost: number = 0;
+    let items_cost: number = 0;
     // let discount_amount: number = 0;
     let delivery_cost: number = 0;
     let description: string = "";
@@ -343,14 +348,37 @@ export const adminCreateOrder = async (
         description = description + newProdDescription;
 
         const itemPrice: number = item?.discount_price || item.price;
-        total_cost += itemPrice * item.quantity;
+        items_cost += itemPrice * item.quantity;
       }
     }
 
+    const businessProfitCost = +calculatePercentage(
+      businessProfitPercentage,
+      items_cost
+    ).toFixed(2);
+    const shippingCost = +calculatePercentage(
+      shippingCostPercentage,
+      items_cost
+    ).toFixed(2);
+    const guaranteeCost = +calculatePercentage(
+      guaranteePercentage,
+      items_cost
+    ).toFixed(2);
+    const servicesCost = +calculatePercentage(
+      servicesPercentage,
+      items_cost
+    ).toFixed(2);
+
     if (discount_amount && discount_amount > 0) {
-      total_cost = total_cost - discount_amount;
+      items_cost = items_cost - discount_amount;
     }
 
+    total_cost =
+      items_cost +
+      businessProfitCost +
+      shippingCost +
+      guaranteeCost +
+      servicesCost;
     // console.log(description);
 
     // if (discount_code) {
@@ -376,6 +404,10 @@ export const adminCreateOrder = async (
         user_id,
         address_id,
         total_cost,
+        business_profit: businessProfitCost,
+        guarantee_cost: guaranteeCost,
+        service_cost: servicesCost,
+        shipping_cost: shippingCost,
         irr_total_cost: total_cost,
         discount_amount,
         delivery_cost,
@@ -580,7 +612,10 @@ export const getOrder = async (
         {
           model: OrderItems,
           as: "order_items",
-          include: [{ model: Product, as: "product" }],
+          include: [
+            { model: Product, as: "product" },
+            { model: ProductVariants, as: "variant" },
+          ],
         },
         { model: Address, as: "address" },
         { model: users, as: "user" },

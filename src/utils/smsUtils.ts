@@ -5,7 +5,7 @@ export const sendSmsVerificationCode = async (phone: string, code: string) => {
     axios.get("https://api.sms-webservice.com/api/V3/Send", {
       params: {
         apikey: process.env.SMS_SECRET,
-        text: `کد احراز نویان استور : ${code}`,
+        text: `کد احراز ایران ارویبو : ${code}`,
         sender: process.env.SMS_SENDER_PHONENUMBER,
         Recipients: phone,
       },
@@ -47,7 +47,7 @@ export const sendFactorSmsOrder = async (
     axios.get("https://api.sms-webservice.com/api/V3/Send", {
       params: {
         apikey: process.env.SMS_SECRET,
-        text: `سلام ${name}\nفاکتور سوژه مورد نظر ثبت شد و سفارشت درحال پیگیریه اینم شماره سفارشت:${orderId}\nنویان استور\nnoyanstore.com`,
+        text: `سلام ${name}\nعزیز فاکتور شما ثبت شد. شماره سفارش:${orderId}\nایران ارویبو\niranorvibo.com`,
         sender: process.env.SMS_SENDER_PHONENUMBER,
         Recipients: phone,
       },
