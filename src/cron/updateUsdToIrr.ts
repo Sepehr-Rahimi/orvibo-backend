@@ -1,6 +1,7 @@
 import cron from "node-cron";
 import { initModels } from "../models/init-models";
 import axios from "axios";
+import { calculateDiscountAmount } from "../utils/mathUtils";
 
 type Exchange = {
   date: string;
@@ -44,7 +45,11 @@ cron.schedule("*/3 * * * * ", async () => {
       return;
     }
 
-    await dollarToIrrRecord?.update({ value: dollarExchange?.price });
+    const updatedCurrency =
+      dollarExchange.price +
+      Math.round(calculateDiscountAmount(dollarExchange.price, 2));
+
+    await dollarToIrrRecord?.update({ value: updatedCurrency.toString() });
 
     console.log("usd to irr exchange successfully updated");
   } catch (error) {
