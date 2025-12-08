@@ -19,10 +19,10 @@ export interface ordersAttributes {
   type_of_payment: string;
   payment_authority?: string;
   payment_status: number;
-  service_cost?: number;
-  guarantee_cost?: number;
-  shipping_cost?: number;
-  business_profit?: number;
+  service_cost: number;
+  guarantee_cost: number;
+  shipping_cost: number;
+  business_profit: number;
 }
 
 export type ordersPk = "id";
@@ -33,10 +33,6 @@ export type ordersOptionalAttributes =
   | "created_at"
   | "payment_authority"
   | "payment_status"
-  | "service_cost"
-  | "guarantee_cost"
-  | "shipping_cost"
-  | "business_profit"
   | "id";
 export type ordersCreationAttributes = Optional<
   ordersAttributes,
@@ -61,10 +57,10 @@ export class orders
   type_of_payment!: string;
   payment_authority?: string;
   payment_status!: number;
-  service_cost?: number;
-  guarantee_cost?: number;
-  shipping_cost?: number;
-  business_profit?: number;
+  service_cost!: number;
+  guarantee_cost!: number;
+  shipping_cost!: number;
+  business_profit!: number;
 
   // orders belongsTo addresses via address_id
   address!: addresses;

@@ -53,10 +53,10 @@ const users = models.users;
 const ProductVariants = models.products_variants;
 const variables = models.variables;
 
-const guaranteePercentage = 5;
-const servicesPercentage = 9;
-const businessProfitPercentage = 10;
-const shippingCostPercentage = 40;
+const defaultGuaranteePercentage = 5;
+const defaultServicesPercentage = 9;
+const defaultBusinessProfitPercentage = 10;
+const defaultShippingCostPercentage = 40;
 
 export const createOrder = async (
   req: AuthenticatedRequest,
@@ -113,7 +113,7 @@ export const createOrder = async (
 
     let servicesCost = 0;
     if (predeterminedServicesCost && predeterminedServicesCost > 0) {
-      servicesCost = calculatePercentage(servicesPercentage, itemsCost);
+      servicesCost = calculatePercentage(defaultServicesPercentage, itemsCost);
       // console.log(servicesCost);
       // console.log(predeterminedServicesCost);
       if (predeterminedServicesCost !== servicesCost) {
@@ -126,7 +126,10 @@ export const createOrder = async (
 
     let guaranteeCost = 0;
     if (predeterminedGuaranteeCost && predeterminedGuaranteeCost > 0) {
-      guaranteeCost = calculatePercentage(guaranteePercentage, itemsCost);
+      guaranteeCost = calculatePercentage(
+        defaultGuaranteePercentage,
+        itemsCost
+      );
       if (predeterminedGuaranteeCost !== guaranteeCost) {
         res
           .status(422)
@@ -136,10 +139,13 @@ export const createOrder = async (
     }
 
     const businessProfit = calculatePercentage(
-      businessProfitPercentage,
+      defaultBusinessProfitPercentage,
       itemsCost
     );
-    const shipping = calculatePercentage(shippingCostPercentage, itemsCost);
+    const shipping = calculatePercentage(
+      defaultShippingCostPercentage,
+      itemsCost
+    );
 
     if (
       businessProfit !== predeterminedBusinessProfitCost
@@ -357,7 +363,7 @@ export const adminCreateOrder = async (
       items_cost
     ).toFixed(2);
     const shippingCost = +calculatePercentage(
-      shippingCostPercentage,
+      shippingPercentage,
       items_cost
     ).toFixed(2);
     const guaranteeCost = +calculatePercentage(
@@ -795,61 +801,79 @@ export const updateOrder = async (
     let new_items_cost = items?.length > 0 ? 0 : items_cost;
     let new_total_cost = items && items.length > 0 ? 0 : total_cost;
 
-    if (items) {
-      for (const item of items) {
-        // console.log(item, "item ");
-        const itemVariant = await ProductVariants.findByPk(item.variant_id);
-        // console.log(product, "product");
-        if (itemVariant && itemVariant?.stock) {
-          if (item.quantity > itemVariant.stock) {
-            res.status(422).json({
-              success: false,
-              message: "متاسفانه محصول مورد نظر به مقدار تعیین شده موجود نیست.",
-            });
-            await transaction?.rollback();
-            return;
-          }
+    let businessProfitCost = order.business_profit;
+    let shippingCost = order.shipping_cost;
+    let guaranteeCost = order.guarantee_cost;
+    let servicesCost = order.service_cost;
 
-          const itemPrice: number = getCurrentPrice(
-            item.price,
-            item.discount_price
-          );
-          new_items_cost += itemPrice * item.quantity;
-        }
-      }
-    }
-
-    if (discount_amount && discount_amount > 0) {
-      new_total_cost = items_cost - discount_amount;
-    } else new_items_cost = items_cost;
-
-    let businessProfitCost = order.business_profit ?? 0;
-    let shippingCost = order.shipping_cost ?? 0;
-    let guaranteeCost = order.guarantee_cost ?? 0;
-    let servicesCost = order.service_cost ?? 0;
-
-    if (
-      guaranteePercentage ||
-      businessProfitPercentage ||
-      shippingCostPercentage ||
-      servicesPercentage
-    ) {
-      businessProfitCost = calculatePercentage(
-        businessProfitPercentage,
-        new_items_cost
-      );
-      shippingCost = calculatePercentage(shippingPercentage, new_items_cost);
-      guaranteeCost = calculatePercentage(guaranteePercentage, new_items_cost);
-      servicesCost = calculatePercentage(servicesPercentage, new_items_cost);
-    }
-
-    new_total_cost +=
-      businessProfitCost + shippingCost + guaranteeCost + servicesCost;
-
-    const irrTotalCost = calculateIrPriceByCurrency(
-      new_total_cost,
+    let irrTotalCost = calculateIrPriceByCurrency(
+      total_cost,
       +dollarToIrrExchange
     );
+
+    if (
+      items?.length ||
+      discount_amount ||
+      businessProfitPercentage ||
+      shippingPercentage ||
+      servicesPercentage ||
+      guaranteePercentage
+    ) {
+      if (items) {
+        for (const item of items) {
+          // console.log(item, "item ");
+          const itemVariant = await ProductVariants.findByPk(item.variant_id);
+          // console.log(product, "product");
+          if (itemVariant && itemVariant?.stock) {
+            if (item.quantity > itemVariant.stock) {
+              res.status(422).json({
+                success: false,
+                message:
+                  "متاسفانه محصول مورد نظر به مقدار تعیین شده موجود نیست.",
+              });
+              await transaction?.rollback();
+              return;
+            }
+
+            const itemPrice: number = getCurrentPrice(
+              item.price,
+              item.discount_price
+            );
+            new_items_cost += itemPrice * item.quantity;
+          }
+        }
+      }
+
+      if (discount_amount && discount_amount > 0) {
+        new_total_cost = items_cost - discount_amount;
+      } else new_total_cost = items_cost;
+
+      if (
+        guaranteePercentage ||
+        businessProfitPercentage ||
+        shippingPercentage ||
+        servicesPercentage
+      ) {
+        businessProfitCost = calculatePercentage(
+          businessProfitPercentage,
+          new_items_cost
+        );
+        shippingCost = calculatePercentage(shippingPercentage, new_items_cost);
+        guaranteeCost = calculatePercentage(
+          guaranteePercentage,
+          new_items_cost
+        );
+        servicesCost = calculatePercentage(servicesPercentage, new_items_cost);
+      }
+
+      new_total_cost +=
+        businessProfitCost + shippingCost + guaranteeCost + servicesCost;
+
+      irrTotalCost = calculateIrPriceByCurrency(
+        new_total_cost,
+        +dollarToIrrExchange
+      );
+    }
 
     await order.update({
       address_id,
