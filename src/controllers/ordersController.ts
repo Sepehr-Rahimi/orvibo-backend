@@ -332,6 +332,16 @@ export const adminCreateOrder = async (
 
     const t = await Orders.sequelize?.transaction();
 
+    const dollarExchangeRecord = await variables.findOne({
+      where: { name: "usdToIrr" },
+    });
+
+    if (!dollarExchangeRecord) {
+      res.status(404).json({ success: false, message: "cant find currency" });
+      await t?.rollback();
+      return;
+    }
+
     let total_cost: number = 0;
     let items_cost: number = 0;
     // let discount_amount: number = 0;
@@ -387,6 +397,9 @@ export const adminCreateOrder = async (
       servicesCost;
     // console.log(description);
 
+    const irrCurrency = +dollarExchangeRecord.value;
+    const irr_total_cost = total_cost * irrCurrency;
+
     // if (discount_code) {
     //   const discountValidate = await validateDiscount(
     //     discount_code,
@@ -414,7 +427,7 @@ export const adminCreateOrder = async (
         guarantee_cost: guaranteeCost,
         service_cost: servicesCost,
         shipping_cost: shippingCost,
-        irr_total_cost: total_cost,
+        irr_total_cost: irr_total_cost,
         discount_amount,
         delivery_cost,
         type_of_delivery,
