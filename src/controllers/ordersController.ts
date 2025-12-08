@@ -606,6 +606,8 @@ export const getOrder = async (
 ): Promise<void> => {
   const { id } = req.params;
 
+  const { includeProductVariants = false } = req.query;
+
   try {
     const order: OrdersWithOrderItems | null = await Orders.findByPk(id, {
       include: [
@@ -613,7 +615,13 @@ export const getOrder = async (
           model: OrderItems,
           as: "order_items",
           include: [
-            { model: Product, as: "product" },
+            {
+              model: Product,
+              as: "product",
+              include: includeProductVariants
+                ? [{ model: ProductVariants, as: "variants" }]
+                : [],
+            },
             { model: ProductVariants, as: "variant" },
           ],
         },
@@ -673,20 +681,36 @@ export const updateOrder = async (
     type_of_payment,
     status,
     payment_status,
+    servicesPercentage,
+    guaranteePercentage,
+    businessProfitPercentage,
+    shippingPercentage,
     items,
   } = req.body;
 
   const transaction = await Orders.sequelize?.transaction();
 
   try {
-    const order = await Orders.findByPk(id, { transaction });
+    const order = await Orders.findByPk(id, {
+      transaction,
+      include: { model: order_items, as: "order_items" },
+    });
 
     if (!order) {
       res.status(404).json({ success: false, message: "Order not found" });
       await transaction?.rollback();
       return;
     }
-
+    const dollarToIrrRecord = await variables.findOne({
+      where: { name: "usdToIrr" },
+    });
+    if (!dollarToIrrRecord) {
+      res
+        .status(404)
+        .json({ success: false, message: "exchange record not found" });
+      return;
+    }
+    const dollarToIrrExchange = dollarToIrrRecord.value;
     const unblockedTransitions: Record<string, string[]> = {
       "1": ["2", "3"],
       "2": ["4"],
@@ -723,7 +747,7 @@ export const updateOrder = async (
           if (!itemVariant) {
             res
               .status(404)
-              .json({ message: "cannot find the product", success: false });
+              .json({ message: "cannot find the variant", success: false });
             return;
           }
           let itemVariantStock = itemVariant.stock;
@@ -760,6 +784,15 @@ export const updateOrder = async (
       // }
     }
 
+    const total_cost = order.total_cost;
+    const items_cost = order.order_items.reduce(
+      (cost, item) =>
+        (cost +=
+          getCurrentPrice(item.price, item.discount_price) * item.quantity),
+      0
+    );
+
+    let new_items_cost = items?.length > 0 ? 0 : items_cost;
     let new_total_cost = items && items.length > 0 ? 0 : total_cost;
 
     if (items) {
@@ -777,20 +810,55 @@ export const updateOrder = async (
             return;
           }
 
-          const itemPrice: number = item.price;
-          new_total_cost += itemPrice * item.quantity;
+          const itemPrice: number = getCurrentPrice(
+            item.price,
+            item.discount_price
+          );
+          new_items_cost += itemPrice * item.quantity;
         }
       }
     }
 
     if (discount_amount && discount_amount > 0) {
-      new_total_cost = new_total_cost - discount_amount;
+      new_total_cost = items_cost - discount_amount;
+    } else new_items_cost = items_cost;
+
+    let businessProfitCost = order.business_profit ?? 0;
+    let shippingCost = order.shipping_cost ?? 0;
+    let guaranteeCost = order.guarantee_cost ?? 0;
+    let servicesCost = order.service_cost ?? 0;
+
+    if (
+      guaranteePercentage ||
+      businessProfitPercentage ||
+      shippingCostPercentage ||
+      servicesPercentage
+    ) {
+      businessProfitCost = calculatePercentage(
+        businessProfitPercentage,
+        new_items_cost
+      );
+      shippingCost = calculatePercentage(shippingPercentage, new_items_cost);
+      guaranteeCost = calculatePercentage(guaranteePercentage, new_items_cost);
+      servicesCost = calculatePercentage(servicesPercentage, new_items_cost);
     }
+
+    new_total_cost +=
+      businessProfitCost + shippingCost + guaranteeCost + servicesCost;
+
+    const irrTotalCost = calculateIrPriceByCurrency(
+      new_total_cost,
+      +dollarToIrrExchange
+    );
 
     await order.update({
       address_id,
       total_cost: new_total_cost,
-      discount_code,
+      business_profit: businessProfitCost,
+      service_cost: servicesCost,
+      guarantee_cost: guaranteeCost,
+      shipping_cost: shippingCost,
+      irr_total_cost: irrTotalCost,
       discount_amount,
       delivery_cost,
       type_of_delivery,

@@ -175,21 +175,27 @@ export const createOrderAdminSchema = Joi.object({
 export const updateOrderSchema = Joi.object({
   address_id: Joi.number(),
   total_cost: Joi.number(),
-  discount_code: Joi.string(),
+  // discount_code: Joi.string(),
   discount_amount: Joi.number(),
-  delivery_cost: Joi.number(),
+  // delivery_cost: Joi.number(),
   other_costs: Joi.string(),
   status: Joi.string(),
   type_of_delivery: Joi.number(),
   payment_status: Joi.number(),
+  servicesPercentage: Joi.number(),
+  guaranteePercentage: Joi.number(),
+  businessProfitPercentage: Joi.number(),
+  shippingPercentage: Joi.number(),
   items: Joi.array().items(
     Joi.object({
       product_id: Joi.number().required(),
+      variant_id: Joi.number().required(),
       quantity: Joi.number().required(),
-      color: Joi.string(),
-      size: Joi.string(),
-      type: Joi.string(),
+      color: Joi.string().allow(null),
+      size: Joi.string().allow(null),
+      type: Joi.string().allow(null),
       price: Joi.number().required(),
+      discount_price: Joi.number().optional(),
     })
   ),
 });
