@@ -778,59 +778,24 @@ export const updateProduct = async (
 
     const product = await Product.findByPk(id, { transaction });
 
-    const productWeight = weight ?? product?.weight;
+    const productWeight = Number(weight) ? weight : product?.weight;
 
     const currency = await variables.findOne({
       where: { name: "currency" },
       transaction,
     });
     if (!currency) {
+      transaction.rollback();
       res.status(404).json({ message: "cannot find currency", success: false });
       return;
     }
     const currentCurrency = +currency.value;
 
     if (!product) {
+      transaction.rollback();
       res.status(404).json({ error: "Product not found." });
       return;
     }
-
-    const targetProductEmbedding = await ProductEmbedding.findOne({
-      where: { product_id: product.id },
-      transaction,
-    });
-
-    // const images = Array.isArray(req.files)
-    //   ? req.files.map((file: Express.Multer.File) =>
-    //       file.path.replace(/\\/g, "/")
-    //     )
-    //   : [];
-
-    // let embedding = targetProductEmbedding?.embedding;
-
-    // if (
-    //   (summary && product?.summary !== summary) ||
-    //   (name && product?.name !== name) ||
-    //   (description && product?.description !== description)
-    // ) {
-    //   const text = normalizePersian(`${name} - ${summary}`);
-    //   const newEmbedding = await createProductEmbedding(text);
-    //   if (!newEmbedding) {
-    //     res.status(400).json({
-    //       message: "somthing went wrong with embedding",
-    //       success: false,
-    //     });
-    //     return;
-    //   }
-    //   embedding = dataBaseEmbeddingFormat(newEmbedding);
-    //   await targetProductEmbedding?.update({ embedding }, { transaction });
-    // }
-
-    // const newImages = Array.isArray(req.files)
-    //   ? req.files.map((file: Express.Multer.File) =>
-    //       file.path.replace(/\\/g, "/")
-    //     )
-    //   : [];
 
     const bodyImages = req.body.images; // could be string or array
     const urls = Array.isArray(bodyImages)
@@ -854,8 +819,6 @@ export const updateProduct = async (
     // console.log("body", req.body);
     // const orderArray = Array.isArray(rawOrder) ? rawOrder : [rawOrder];
 
-    // console.log("images", orderImages);
-
     if (orderImages && orderImages?.length > 0) {
       for (let i = 0; i < orderImages?.length; i++) {
         const value = orderImages[i];
@@ -872,61 +835,12 @@ export const updateProduct = async (
       }
     }
     const updatedImages = allImages.length > 0 ? allImages : product.images;
-    // product?.dataValues?.images
-    //   ? [...product?.dataValues.images, ...newImages]
-    //   :
-    // console.log("images:", updatedImages);
-
-    // const productCurrency = NewproductCurrency ?? product.currency_price;
-    // let productPrice = product.price;
-    // let productDiscountPrice = product.discount_price ?? 0;
-
-    // const currentProductCurrency = product.currency_price ?? 0;
-    // if (currentProductCurrency !== productCurrency) {
-    //   const currency = await variables.findOne({ where: { name: "currency" } });
-    //   if (!currency) {
-    //     res.status(422).json({ message: "نرخ پیدا نشد", success: false });
-    //     return;
-    //   }
-    //   const productDiscountPercentage = calculateDiscountPercentage(
-    //     productPrice,
-    //     productDiscountPrice
-    //   );
-    //   productPrice = calculateIrPriceByCurrency(
-    //     productCurrency,
-    //     +currency.value
-    //   );
-    //   productDiscountPrice = calculateDiscountPercentagePrice(
-    //     productPrice,
-    //     productDiscountPercentage
-    //   );
-
-    //   // how to update productDiscountPrice...?
-    // }
-
-    // if (
-    //   discount_percentage &&
-    //   discount_percentage >= 0 &&
-    //   discount_percentage < 100
-    // ) {
-    //   productDiscountPrice = modifyDiscountPrice(
-    //     discount_percentage,
-    //     productPrice
-    //   );
-    // }
 
     await product.update(
       {
         name,
-        // price: productPrice,
-        // discount_price: productDiscountPrice,
         summary,
-        // colors,
-        // sizes: sizes || [],
-        // stock,
-        // main_features,
         description,
-        // kinds: kinds || [],
         model,
         category_id,
         brand_id,
@@ -936,20 +850,14 @@ export const updateProduct = async (
         is_published: is_published == "true",
         images: updatedImages,
         weight: productWeight,
-        // currency_price: productCurrency,
-        // embedding,
       },
       { transaction }
     );
 
     if (variants) {
-      await ProductVariants.destroy({
-        where: { product_id: product.id },
-        transaction,
-      });
-
       for (const singleVariant of variants) {
         const {
+          id,
           currency_price,
           color,
           discount_percentage,
@@ -958,6 +866,7 @@ export const updateProduct = async (
           kind,
           sku,
         } = singleVariant;
+        // console.log("id :", id);
         if (!currency_price || !color || !stock) {
           res.status(400).json({
             message: "please enter full information for currency",
@@ -976,20 +885,45 @@ export const updateProduct = async (
             discount_percentage
           );
         }
-        await ProductVariants.create(
-          {
-            color,
-            kind,
-            sku,
-            product_id: product.id,
-            currency_price,
-            discount_price: variantDiscountPrice,
-            is_published,
-            price: variantPrice,
-            stock,
-          },
-          { transaction }
-        );
+        if (Number(id)) {
+          const targetVariant = await ProductVariants.findByPk(id);
+          if (!targetVariant) {
+            res.status(404).json({
+              message: "cant find the product variant",
+              success: false,
+            });
+            return;
+          }
+          await targetVariant.update(
+            {
+              color,
+              kind,
+              sku,
+              product_id: product.id,
+              currency_price,
+              discount_price: variantDiscountPrice,
+              is_published,
+              price: variantPrice,
+              stock,
+            },
+            { transaction }
+          );
+        } else {
+          await ProductVariants.create(
+            {
+              color,
+              kind,
+              sku,
+              product_id: product.id,
+              currency_price,
+              discount_price: variantDiscountPrice,
+              is_published,
+              price: variantPrice,
+              stock,
+            },
+            { transaction }
+          );
+        }
       }
     }
 
@@ -1008,6 +942,7 @@ export const updateProduct = async (
     await transaction.rollback();
   }
 };
+
 export const deleteProductImages = async (
   req: Request,
   res: Response

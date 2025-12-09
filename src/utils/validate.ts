@@ -134,7 +134,7 @@ export const createOrderSchema = Joi.object({
         quantity: Joi.number().required(),
         color: Joi.string().allow(null),
         size: Joi.string().allow(null),
-        type: Joi.string().allow(null),
+        kind: Joi.string().allow("").optional(),
         price: Joi.number().required(),
         discount_price: Joi.number().optional(),
       })

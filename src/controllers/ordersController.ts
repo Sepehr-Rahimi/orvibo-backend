@@ -398,7 +398,9 @@ export const adminCreateOrder = async (
     // console.log(description);
 
     const irrCurrency = +dollarExchangeRecord.value;
-    const irr_total_cost = total_cost * irrCurrency;
+    const irr_total_cost = Math.round(
+      calculateIrPriceByCurrency(total_cost, irrCurrency)
+    );
 
     // if (discount_code) {
     //   const discountValidate = await validateDiscount(
@@ -819,9 +821,8 @@ export const updateOrder = async (
     let guaranteeCost = order.guarantee_cost;
     let servicesCost = order.service_cost;
 
-    let irrTotalCost = calculateIrPriceByCurrency(
-      total_cost,
-      +dollarToIrrExchange
+    let irrTotalCost = Math.round(
+      calculateIrPriceByCurrency(total_cost, +dollarToIrrExchange)
     );
 
     if (
@@ -882,9 +883,8 @@ export const updateOrder = async (
       new_total_cost +=
         businessProfitCost + shippingCost + guaranteeCost + servicesCost;
 
-      irrTotalCost = calculateIrPriceByCurrency(
-        new_total_cost,
-        +dollarToIrrExchange
+      irrTotalCost = Math.round(
+        calculateIrPriceByCurrency(new_total_cost, +dollarToIrrExchange)
       );
     }
 
