@@ -23,6 +23,8 @@ import {
   calculatePercentage,
   getCurrentPrice,
 } from "../utils/mathUtils";
+import puppeteer from "puppeteer";
+import fs from "fs";
 
 // type_of_payment === 1 : payment with bankaccount via zarinpal
 // type_of_payment === 0 : siteAdmin create factor
@@ -1060,5 +1062,70 @@ export const verifyPayment = async (
       .json({ message: error || "somthing went wrong", success: false });
     console.error("Error verifying payment:", error);
     return;
+  }
+};
+
+export const createOrderPdf = async (req: Request, res: Response) => {
+  const { id } = req.params;
+  const token = req.headers.authorization?.split(" ")[1];
+  const { bank: choosedAccount, en: enLang } = req.query;
+
+  // console.log("choosed account is :", choosedAccount);
+
+  if (!token) {
+    res.status(401).json({ message: "Unauthorized", success: false });
+    return;
+  }
+  if (!id) {
+    res.status(400).json({ message: "Order ID required" });
+    return;
+  }
+
+  const pdfUrl = `${process.env.APP_URL}/admin/dashboard/order/${id}/${
+    enLang ? "en" : "/"
+  }?pdf=1&bank=${choosedAccount}`;
+
+  let browser;
+  try {
+    browser = await puppeteer.launch({
+      headless: true,
+      args: ["--no-sandbox", "--disable-setuid-sandbox"],
+    });
+
+    const page = await browser.newPage();
+    await page.setViewport({ width: 1280, height: 900 });
+
+    await page.goto(new URL(process.env.APP_URL!).origin, {
+      waitUntil: "domcontentloaded",
+    });
+    await page.evaluate(
+      (tokenValue) => localStorage.setItem("jwt_access_token", tokenValue),
+      token
+    );
+
+    await page.goto(pdfUrl, { waitUntil: "networkidle0", timeout: 60000 });
+
+    //  save debug HTML
+    // fs.writeFileSync(`./debug-html-order-${id}.html`, await page.content());
+
+    const pdf = await page.pdf({
+      format: "A4",
+      printBackground: true,
+      preferCSSPageSize: true,
+      margin: { top: 20, left: 10, right: 10, bottom: 20 },
+    });
+
+    res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=order-${id}.pdf`
+    );
+    res.setHeader("Content-Length", pdf.length);
+    res.end(pdf);
+  } catch (error) {
+    console.error("PDF generation error:", error);
+    res.status(500).json({ message: "Server error", success: false });
+  } finally {
+    if (browser) await browser.close();
   }
 };

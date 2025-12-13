@@ -19,6 +19,7 @@ import {
 import {
   adminCreateOrder,
   createOrder,
+  createOrderPdf,
   deleteOrder,
   getOrder,
   listOrders,
@@ -37,6 +38,8 @@ router.get("/list", authenticateToken, listOrders);
 router.get("/list/admin", authenticateAdminToken, listOrdersAdmin);
 
 router.get("/one/:id", authenticateToken, getOrder);
+
+router.get("/:id/pdf", createOrderPdf);
 
 router.post("/verify-payment", verifyPayment);
 
