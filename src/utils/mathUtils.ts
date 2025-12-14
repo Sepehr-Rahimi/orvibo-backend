@@ -31,8 +31,17 @@ export const calculateIrPriceByCurrency = (
   return itemCurrency * currentCurrency;
 };
 
-export const calculatePercentage = (percentage: number, price: number) =>
-  (percentage / 100) * price;
+export const calculateCurrencyByIrrPrice = (
+  price: number,
+  currency: number
+) => {
+  return Math.round(price / currency);
+};
+
+export const calculatePercentage = (percentage: number, price: number) => {
+  const result = (percentage / 100) * price;
+  return Math.round((result + Number.EPSILON) * 100) / 100;
+};
 
 export const getCurrentPrice = (...prices: any[]) => {
   const valid = prices.filter((p) => (typeof p === "number" || +p) && p > 0);

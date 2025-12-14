@@ -19,12 +19,14 @@ import {
 import { useDiscountCode, validateDiscount } from "../utils/discountUtil";
 import { sendFactorSmsOrder, sendSmsSuccessOrder } from "../utils/smsUtils";
 import {
+  calculateCurrencyByIrrPrice,
   calculateIrPriceByCurrency,
   calculatePercentage,
   getCurrentPrice,
 } from "../utils/mathUtils";
 import puppeteer from "puppeteer";
 import fs from "fs";
+import sequelize from "../config/database";
 
 // type_of_payment === 1 : payment with bankaccount via zarinpal
 // type_of_payment === 0 : siteAdmin create factor
@@ -45,6 +47,10 @@ interface orderWithAddressAndItems extends orders {
   order_items: order_items[];
   address: addresses;
 }
+
+type BaseIrrMode = { mode: "manual"; value: number } | { mode: "stored" };
+type CreateOrderIrrMode = BaseIrrMode;
+type UpdateOrderIrrMode = BaseIrrMode | { mode: "current" };
 
 const models = initModels();
 const Orders = models.orders;
@@ -323,6 +329,7 @@ export const adminCreateOrder = async (
       // discount_code,
       discount_amount,
       // delivery_cost,
+      irr_calculate_mode,
       type_of_delivery,
       type_of_payment,
       servicesPercentage,
@@ -333,16 +340,6 @@ export const adminCreateOrder = async (
     } = req.body;
 
     const t = await Orders.sequelize?.transaction();
-
-    const dollarExchangeRecord = await variables.findOne({
-      where: { name: "usdToIrr" },
-    });
-
-    if (!dollarExchangeRecord) {
-      res.status(404).json({ success: false, message: "cant find currency" });
-      await t?.rollback();
-      return;
-    }
 
     let total_cost: number = 0;
     let items_cost: number = 0;
@@ -399,9 +396,32 @@ export const adminCreateOrder = async (
       servicesCost;
     // console.log(description);
 
-    const irrCurrency = +dollarExchangeRecord.value;
+    let orderIrrCurrency = 0;
+    if (irr_calculate_mode.mode === "manual") {
+      if (!irr_calculate_mode.value || irr_calculate_mode.value <= 0) {
+        res
+          .status(400)
+          .json({ message: "please enter valid currency", success: false });
+        return;
+      }
+      orderIrrCurrency = irr_calculate_mode.value;
+    } else {
+      const dollarExchangeRecord = await variables.findOne({
+        where: { name: "usdToIrr" },
+      });
+
+      if (!dollarExchangeRecord) {
+        res.status(404).json({ success: false, message: "cant find currency" });
+        await t?.rollback();
+        return;
+      }
+
+      orderIrrCurrency = +dollarExchangeRecord.value;
+    }
+
+    // const irrCurrency = +dollarExchangeRecord.value;
     const irr_total_cost = Math.round(
-      calculateIrPriceByCurrency(total_cost, irrCurrency)
+      calculateIrPriceByCurrency(total_cost, orderIrrCurrency)
     );
 
     // if (discount_code) {
@@ -696,8 +716,8 @@ export const updateOrder = async (
   const { id } = req.params;
   const {
     address_id,
-    total_cost,
-    discount_code,
+    // update_irr,
+    irr_calculate_mode,
     discount_amount,
     delivery_cost,
     type_of_delivery,
@@ -724,34 +744,16 @@ export const updateOrder = async (
       await transaction?.rollback();
       return;
     }
-    const dollarToIrrRecord = await variables.findOne({
-      where: { name: "usdToIrr" },
-    });
-    if (!dollarToIrrRecord) {
-      res
-        .status(404)
-        .json({ success: false, message: "exchange record not found" });
-      return;
-    }
-    const dollarToIrrExchange = dollarToIrrRecord.value;
-    const unblockedTransitions: Record<string, string[]> = {
-      "1": ["2", "3"],
-      "2": ["4"],
-      "3": ["1"],
-      "4": ["1"],
-    };
 
-    // if (status && !unblockedTransitions[order.status]?.includes(status)) {
-    //   res
-    //     .status(422)
-    //     .json({
-    //       message: "please enter valid status for order",
-    //       success: false,
-    //     });
-    //   return;
-    // }
+    // handle product/variants stock based order status
 
     if (status && order.status !== status && order.type_of_payment != "1") {
+      const unblockedTransitions: Record<string, string[]> = {
+        "1": ["2", "3"],
+        "2": ["4"],
+        "3": ["1"],
+        "4": ["1"],
+      };
       if (!unblockedTransitions[order.status]?.includes(status)) {
         res.status(422).json({
           message: "please enter valid status for order",
@@ -789,23 +791,13 @@ export const updateOrder = async (
           itemVariant.update({ stock: itemVariantStock });
         })
       );
-      // for (const orderItem of orderItems) {
-      //   const product = await products.findByPk(orderItem.product_id);
-      //   if (!product) {
-      //     res
-      //       .status(404)
-      //       .json({ message: "cannot find the product", success: false });
-      //     return;
-      //   }
-      //   let productStock = product.stock;
-      //   if (status === "3" || status === "4") {
-      //     productStock = productStock + orderItem.quantity;
-      //   } else if (status === "2" || status === "1") {
-      //     productStock = productStock - orderItem.quantity;
-      //   }
-      //   product.update({ stock: productStock });
-      // }
     }
+
+    // handle irrcurrency for order irr_total_cost
+    let orderIrrCurrencyPrice = calculateCurrencyByIrrPrice(
+      order.irr_total_cost,
+      order.total_cost
+    );
 
     const total_cost = order.total_cost;
     const items_cost = order.order_items.reduce(
@@ -824,7 +816,7 @@ export const updateOrder = async (
     let servicesCost = order.service_cost;
 
     let irrTotalCost = Math.round(
-      calculateIrPriceByCurrency(total_cost, +dollarToIrrExchange)
+      calculateIrPriceByCurrency(total_cost, +orderIrrCurrencyPrice)
     );
 
     if (
@@ -833,8 +825,38 @@ export const updateOrder = async (
       businessProfitPercentage ||
       shippingPercentage ||
       servicesPercentage ||
-      guaranteePercentage
+      guaranteePercentage ||
+      irr_calculate_mode
     ) {
+      if (irr_calculate_mode) {
+        const irrCalculateMode: UpdateOrderIrrMode = irr_calculate_mode;
+        if (irrCalculateMode.mode === "current") {
+          orderIrrCurrencyPrice = Math.round(
+            order.irr_total_cost / order.total_cost
+          );
+        } else if (irrCalculateMode.mode === "manual") {
+          if (!irrCalculateMode.value || irrCalculateMode.value <= 0) {
+            res.status(400).json({
+              message: "please enter valid currency for irr cost",
+              success: false,
+            });
+            return;
+          }
+          orderIrrCurrencyPrice = irrCalculateMode.value;
+        } else {
+          const dollarToIrrRecord = await variables.findOne({
+            where: { name: "usdToIrr" },
+          });
+          if (!dollarToIrrRecord) {
+            res.status(404).json({
+              message: "cant find irr exchange record",
+              success: false,
+            });
+            return;
+          }
+          orderIrrCurrencyPrice = +dollarToIrrRecord.value;
+        }
+      }
       if (items) {
         for (const item of items) {
           // console.log(item, "item ");
@@ -861,8 +883,8 @@ export const updateOrder = async (
       }
 
       if (discount_amount && discount_amount > 0) {
-        new_total_cost = items_cost - discount_amount;
-      } else new_total_cost = items_cost;
+        new_total_cost = new_items_cost - discount_amount;
+      } else new_total_cost = new_items_cost;
 
       if (
         guaranteePercentage ||
@@ -886,7 +908,7 @@ export const updateOrder = async (
         businessProfitCost + shippingCost + guaranteeCost + servicesCost;
 
       irrTotalCost = Math.round(
-        calculateIrPriceByCurrency(new_total_cost, +dollarToIrrExchange)
+        calculateIrPriceByCurrency(new_total_cost, +orderIrrCurrencyPrice)
       );
     }
 
@@ -907,15 +929,59 @@ export const updateOrder = async (
     });
 
     if (items) {
-      await OrderItems.destroy({ where: { order_id: id } });
-      const orderItems = items.map((item: any) => ({
-        ...item,
-        order_id: id,
-      }));
-      await OrderItems.bulkCreate(orderItems);
-    }
+      // await OrderItems.destroy({ where: { order_id: id } });
+      // const orderItems = items.map((item: any) => ({
+      //   ...item,
+      //   order_id: id,
+      // }));
+      // await OrderItems.bulkCreate(orderItems);
+      const existingOrderItems = await order_items.findAll({
+        where: { order_id: id },
+        transaction,
+      });
+      const existingItemsMap = new Map<number, any>();
+      existingOrderItems.map((singleItem) =>
+        existingItemsMap.set(singleItem.dataValues.id, singleItem.dataValues)
+      );
 
-    await transaction?.commit();
+      const itemsToCreate: order_itemsAttributes[] = [];
+      const itemsToUpdate: order_itemsAttributes[] = [];
+      const incomingExistingIds = new Set<number>();
+
+      for (const item of items) {
+        if (item.id && existingItemsMap.has(item.id)) {
+          itemsToUpdate.push({ ...item, order_id: id });
+          incomingExistingIds.add(item.id);
+        } else {
+          itemsToCreate.push({ ...item, order_id: id });
+        }
+      }
+
+      const itemsToDelete = existingOrderItems
+        .filter(
+          (singleItem) => !incomingExistingIds.has(singleItem.dataValues.id)
+        )
+        .map((singleItem) => singleItem.dataValues.id);
+
+      if (itemsToDelete.length) {
+        await OrderItems.destroy({
+          where: { id: itemsToDelete },
+          transaction,
+        });
+      }
+
+      for (const item of itemsToUpdate) {
+        await OrderItems.update(item, {
+          where: { id: item.id },
+          transaction,
+        });
+      }
+
+      if (itemsToCreate.length) {
+        await OrderItems.bulkCreate(itemsToCreate, { transaction });
+      }
+    }
+    transaction?.commit();
     res
       .status(200)
       .json({ success: true, message: "Order updated successfully" });

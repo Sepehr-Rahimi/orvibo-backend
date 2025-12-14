@@ -148,6 +148,10 @@ export const createOrderAdminSchema = Joi.object({
   // discount_code: Joi.string().allow(""),
   discount_amount: Joi.number(),
   // delivery_cost: Joi.number().required(),
+  irr_calculate_mode: Joi.object({
+    mode: Joi.string().required(),
+    value: Joi.number().allow(null),
+  }),
   type_of_delivery: Joi.number().required(),
   type_of_payment: Joi.string().required(),
   callback_url: Joi.string().allow(""),
@@ -175,6 +179,10 @@ export const createOrderAdminSchema = Joi.object({
 export const updateOrderSchema = Joi.object({
   address_id: Joi.number(),
   total_cost: Joi.number(),
+  irr_calculate_mode: Joi.object({
+    mode: Joi.string().required(),
+    value: Joi.number().allow(null),
+  }),
   // discount_code: Joi.string(),
   discount_amount: Joi.number(),
   // delivery_cost: Joi.number(),
