@@ -1154,6 +1154,7 @@ export const createOrderPdf = async (req: Request, res: Response) => {
   let browser;
   try {
     browser = await puppeteer.launch({
+      executablePath: process.env.PUPPETEER_PATH,
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
     });
