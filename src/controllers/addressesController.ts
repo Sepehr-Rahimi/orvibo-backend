@@ -16,6 +16,7 @@ export const createAddress = async (
     const {
       is_home,
       full_name,
+      latin_full_name,
       phone_number,
       address,
       city,
@@ -41,6 +42,7 @@ export const createAddress = async (
       user_id,
       is_home,
       full_name,
+      latin_full_name,
       phone_number,
       address,
       city,
@@ -125,6 +127,7 @@ export const updateAddress = async (
     const {
       is_home,
       full_name,
+      latin_full_name,
       phone_number,
       address: newAddress,
       city,
@@ -136,6 +139,7 @@ export const updateAddress = async (
     await address.update({
       is_home,
       full_name,
+      latin_full_name,
       phone_number,
       address: newAddress,
       city,

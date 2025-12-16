@@ -10,8 +10,8 @@ const router = Router();
 
 router.post("/currency/update", authenticateAdminToken, UpdateCurrency);
 
-router.get("/currency/get", authenticateAdminToken, GetCurrency);
+router.get("/currency/get", GetCurrency);
 
-router.get("/irrExchange/get", authenticateAdminToken, getDollarToIrrExchange);
+router.get("/irrExchange/get", getDollarToIrrExchange);
 
 export default router;

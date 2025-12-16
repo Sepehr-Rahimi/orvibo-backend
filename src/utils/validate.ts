@@ -50,7 +50,7 @@ export const createProductsSchema = Joi.object({
   summary: Joi.string().required(),
   description: Joi.string().required(),
   code: Joi.string().optional(),
-  model: Joi.string().optional(),
+  model: Joi.string().allow(""),
   // stock: Joi.string().required(),
   category_id: Joi.string().required(),
   brand_id: Joi.string().required(),
@@ -94,6 +94,9 @@ export const updateProductsSchema = Joi.object({
 export const createAddressSchema = Joi.object({
   is_home: Joi.boolean(),
   full_name: Joi.string().required(),
+  latin_full_name: Joi.string()
+    .regex(/^[A-Za-z ]+$/)
+    .required(),
   phone_number: Joi.string().required(),
   address: Joi.string().required(),
   city: Joi.string().required(),
@@ -105,6 +108,9 @@ export const createAddressSchema = Joi.object({
 export const updateAddressSchema = Joi.object({
   is_home: Joi.boolean(),
   full_name: Joi.string(),
+  latin_full_name: Joi.string()
+    .regex(/^[A-Za-z ]+$/)
+    .required(),
   phone_number: Joi.string(),
   address: Joi.string(),
   city: Joi.string(),
@@ -258,18 +264,18 @@ export const updateDiscountCodeSchema = Joi.object({
 });
 
 export const createBannerSchema = Joi.object({
-  title: Joi.string(),
-  description: Joi.string(),
-  button_text: Joi.string(),
-  link: Joi.string(),
+  title: Joi.string().allow("").optional(),
+  description: Joi.string().allow("").optional(),
+  button_text: Joi.string().allow("").optional(),
+  link: Joi.string().allow("").optional(),
   is_published: Joi.boolean(),
 });
 
 export const updateBannerSchema = Joi.object({
-  title: Joi.string(),
-  description: Joi.string(),
-  button_text: Joi.string(),
-  link: Joi.string(),
+  title: Joi.string().allow("").optional(),
+  description: Joi.string().allow("").optional(),
+  button_text: Joi.string().allow("").optional(),
+  link: Joi.string().allow("").optional(),
   is_published: Joi.boolean(),
 });
 

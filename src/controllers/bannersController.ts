@@ -140,7 +140,7 @@ export const updateBanner = async (
       description,
       button_text,
       link,
-      is_published,
+      is_published: is_published == "true",
       cover: updatedCoverPath,
     });
 

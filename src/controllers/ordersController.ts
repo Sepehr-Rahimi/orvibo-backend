@@ -299,7 +299,7 @@ export const createOrder = async (
 
         return;
       }
-    } else {
+    } else if (type_of_payment == 1 && haveGateWayLimitation) {
       await t?.commit();
 
       res.json({
@@ -309,6 +309,14 @@ export const createOrder = async (
         paymentUrl: `/products/checkout/finalize-order-payment?orderId=${newOrder.id}`,
       });
       return;
+    } else if (type_of_payment == 0) {
+      await t?.commit();
+
+      res.json({
+        success: true,
+        message: "Order created successfully",
+        paymentUrl: `/dashboard/order/${newOrder.id}`,
+      });
     }
   } catch (error) {
     console.error("Error creating order:", error);
@@ -1157,6 +1165,7 @@ export const createOrderPdf = async (req: Request, res: Response) => {
       executablePath: process.env.PUPPETEER_PATH,
       headless: true,
       args: ["--no-sandbox", "--disable-setuid-sandbox"],
+      waitForInitialPage: true,
     });
 
     const page = await browser.newPage();
@@ -1177,6 +1186,7 @@ export const createOrderPdf = async (req: Request, res: Response) => {
 
     const pdf = await page.pdf({
       format: "A4",
+      waitForFonts: true,
       printBackground: true,
       preferCSSPageSize: true,
       margin: { top: 20, left: 10, right: 10, bottom: 20 },
