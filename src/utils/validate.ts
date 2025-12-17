@@ -95,7 +95,7 @@ export const createAddressSchema = Joi.object({
   is_home: Joi.boolean(),
   full_name: Joi.string().required(),
   latin_full_name: Joi.string()
-    .regex(/^[A-Za-z ]+$/)
+    .regex(/^[A-Za-z .:@!#$%&*()_+\-=/]+$/)
     .required(),
   phone_number: Joi.string().required(),
   address: Joi.string().required(),
@@ -109,7 +109,7 @@ export const updateAddressSchema = Joi.object({
   is_home: Joi.boolean(),
   full_name: Joi.string(),
   latin_full_name: Joi.string()
-    .regex(/^[A-Za-z ]+$/)
+    .regex(/^[A-Za-z .:@!#$%&*()_+\-=/]+$/)
     .required(),
   phone_number: Joi.string(),
   address: Joi.string(),
