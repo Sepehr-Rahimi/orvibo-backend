@@ -295,6 +295,7 @@ export const productList = async (
         {
           model: ProductVariants,
           as: "variants",
+          separate: true,
         },
       ],
     });
@@ -373,6 +374,7 @@ export const adminProductList = async (
         {
           model: ProductVariants,
           as: "variants",
+          separate: true,
         },
       ],
     });

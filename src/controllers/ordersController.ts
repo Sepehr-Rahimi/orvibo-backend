@@ -679,6 +679,27 @@ export const getOrder = async (
         { model: Address, as: "address" },
         { model: users, as: "user" },
       ],
+      order: [
+        // Order order_items by product.name
+        [
+          { model: OrderItems, as: "order_items" },
+          { model: Product, as: "product" },
+          "name",
+          "ASC",
+        ],
+        [
+          { model: OrderItems, as: "order_items" },
+          { model: ProductVariants, as: "variant" },
+          "color",
+          "ASC",
+        ],
+        [
+          { model: OrderItems, as: "order_items" },
+          { model: ProductVariants, as: "variant" },
+          "kind",
+          "ASC",
+        ],
+      ],
     });
 
     if (!order) {

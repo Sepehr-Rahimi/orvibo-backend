@@ -144,6 +144,37 @@ export class products_variants
         tableName: "products_variants",
         schema: "public",
         timestamps: false,
+        defaultScope: {
+          order: [
+            [
+              Sequelize.literal(`
+      CASE
+        WHEN EXISTS (
+          SELECT 1
+          FROM products_variants AS v2
+          WHERE v2.product_id = "products_variants"."product_id"
+            AND LOWER(v2.kind) = 'standard'
+            AND v2.color = "products_variants"."color"
+        )
+        THEN 0
+        ELSE 1
+      END
+    `),
+              "ASC",
+            ],
+            ["color", "ASC"],
+            [
+              Sequelize.literal(`
+              CASE
+                WHEN LOWER("kind") = 'standard' THEN 0
+                ELSE 1
+              END
+            `),
+              "ASC",
+            ],
+            ["kind", "ASC"],
+          ],
+        },
         indexes: [
           {
             name: "products_variants_pkey",
