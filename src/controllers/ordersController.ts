@@ -569,6 +569,98 @@ export const adminCreateOrder = async (
   }
 };
 
+export const finalizeUserOrder = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  const { id: orderId } = req.body;
+  const { id: user_id, phone_number } = req.user;
+  console.log(orderId);
+  console.log(req.body);
+
+  if (!user_id || !phone_number || !orderId) {
+    res
+      .status(400)
+      .json({ message: "لطفا تمام اطلاعات را وارد کنید", success: false });
+    return;
+  }
+
+  try {
+    const transaction = await Orders.sequelize?.transaction();
+    const userOrder = await Orders.findByPk(orderId, {
+      transaction,
+    });
+    if (!userOrder) {
+      res.status(404).json({ message: "سفارش شما پیدا نشد", success: false });
+      return;
+    }
+
+    if (userOrder.user_id !== user_id) {
+      res.status(401).json({ message: "access denied", success: false });
+      return;
+    }
+
+    const { irr_total_cost } = userOrder;
+
+    const haveGateWayLimitation = irr_total_cost > 200000000;
+
+    const description = `سفارش ${userOrder.id} پرداخت شد`;
+
+    if (!haveGateWayLimitation) {
+      const paymentRequestResult = await RequestPayment({
+        amount: irr_total_cost,
+        callback_url: req.body?.callback_url,
+        description,
+        mobile: phone_number,
+        order_id: userOrder.id.toString(),
+      });
+
+      if (paymentRequestResult.data && paymentRequestResult.data.code == 100) {
+        const authority = paymentRequestResult.data.authority;
+        const redirectUrl = `${paymentUrl}pg/StartPay/${authority}`;
+        await userOrder.update(
+          {
+            payment_authority: authority,
+            type_of_payment: "1",
+            // payment_status: 1,
+          },
+          { transaction }
+        );
+        await transaction?.commit();
+        res.json({
+          success: true,
+          message: "Order created successfully",
+          order: userOrder,
+          paymentUrl: redirectUrl,
+        });
+        // console.log(newOrder);
+        return;
+      } else {
+        await transaction?.rollback();
+        res.status(400).json({
+          success: false,
+          payment_message: paymentRequestResult?.message,
+          message: "خطایی رخ داد!",
+        });
+        return;
+      }
+    } else {
+      await transaction?.commit();
+
+      res.json({
+        success: true,
+        message: "Order created successfully",
+        // order: newOrder,
+        paymentUrl: `/products/checkout/finalize-order-payment?orderId=${userOrder.id}`,
+      });
+      return;
+    }
+  } catch (error) {
+    res.status(500).json({ message: "server error", success: false });
+    console.log(error);
+  }
+};
+
 export const listOrders = async (
   req: AuthenticatedRequest,
   res: Response
@@ -670,7 +762,7 @@ export const getOrder = async (
               model: Product,
               as: "product",
               include: includeProductVariants
-                ? [{ model: ProductVariants, as: "variants" }]
+                ? [{ model: ProductVariants, separate: true, as: "variants" }]
                 : [],
             },
             { model: ProductVariants, as: "variant" },
@@ -1163,7 +1255,7 @@ export const verifyPayment = async (
 export const createOrderPdf = async (req: Request, res: Response) => {
   const { id } = req.params;
   const token = req.headers.authorization?.split(" ")[1];
-  const { bank: choosedAccount, en: enLang } = req.query;
+  const { bank: choosedAccount, lang, isAdmin, byPricing } = req.query;
 
   // console.log("choosed account is :", choosedAccount);
 
@@ -1176,9 +1268,11 @@ export const createOrderPdf = async (req: Request, res: Response) => {
     return;
   }
 
-  const pdfUrl = `${process.env.APP_URL}/admin/dashboard/order/${id}/${
-    enLang ? "en" : "/"
-  }?pdf=1&bank=${choosedAccount}`;
+  const ifisAdmin = isAdmin == "true" ? "/admin/" : "";
+  const ifIsEn = lang == "en" ? "en" : "/";
+  const pdfUrl = `${process.env.APP_URL}${ifisAdmin}dashboard/order/${id}/${ifIsEn}?pdf=1&bank=${choosedAccount}&byPricing=${byPricing}`;
+
+  // console.log(pdfUrl);
 
   let browser;
   try {

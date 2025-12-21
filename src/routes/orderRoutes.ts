@@ -21,6 +21,7 @@ import {
   createOrder,
   createOrderPdf,
   deleteOrder,
+  finalizeUserOrder,
   getOrder,
   listOrders,
   listOrdersAdmin,
@@ -39,9 +40,11 @@ router.get("/list/admin", authenticateAdminToken, listOrdersAdmin);
 
 router.get("/one/:id", authenticateToken, getOrder);
 
-router.get("/:id/pdf", createOrderPdf);
+router.get("/:id/pdf", authenticateToken, createOrderPdf);
 
 router.post("/verify-payment", verifyPayment);
+
+router.post("/finalize-order", authenticateToken, finalizeUserOrder);
 
 router.post(
   "/create",
