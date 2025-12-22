@@ -2,7 +2,7 @@ import axios from "axios";
 
 export const sendSmsVerificationCode = async (phone: string, code: string) => {
   try {
-    axios.get("https://api.sms-webservice.com/api/V3/Send", {
+    await axios.get("https://api.sms-webservice.com/api/V3/Send", {
       params: {
         apikey: process.env.SMS_SECRET,
         text: `کد احراز ایران ارویبو : ${code}`,
