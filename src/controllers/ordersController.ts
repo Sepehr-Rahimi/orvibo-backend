@@ -1255,7 +1255,7 @@ export const verifyPayment = async (
 export const createOrderPdf = async (req: Request, res: Response) => {
   const { id } = req.params;
   const token = req.headers.authorization?.split(" ")[1];
-  const { bank: choosedAccount, lang, isAdmin, byPricing } = req.query;
+  const { bank: choosedAccount, lang, isAdmin, withoutPricing } = req.query;
 
   // console.log("choosed account is :", choosedAccount);
 
@@ -1270,7 +1270,7 @@ export const createOrderPdf = async (req: Request, res: Response) => {
 
   const ifisAdmin = isAdmin == "true" ? "/admin/" : "";
   const ifIsEn = lang == "en" ? "en" : "/";
-  const pdfUrl = `${process.env.APP_URL}${ifisAdmin}dashboard/order/${id}/${ifIsEn}?pdf=1&bank=${choosedAccount}&byPricing=${byPricing}`;
+  const pdfUrl = `${process.env.APP_URL}${ifisAdmin}dashboard/order/${id}/${ifIsEn}?pdf=1&bank=${choosedAccount}&withoutPricing=${withoutPricing}`;
 
   // console.log(pdfUrl);
 
