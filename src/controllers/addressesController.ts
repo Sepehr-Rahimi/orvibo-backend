@@ -190,8 +190,11 @@ export const deleteAddress = async (
   }
 };
 
-export const searchAddresses = async (req: Request, res: Response) => {
-  console.log(req.params);
+export const searchAddresses = async (
+  req: AuthenticatedRequest,
+  res: Response
+) => {
+  // console.log(req.params);
   const { search } = req.query;
 
   if (!search) {
@@ -201,14 +204,35 @@ export const searchAddresses = async (req: Request, res: Response) => {
     return;
   }
   try {
+    const isAdmin = req.user.role == 2;
+    const whereClause: any = {};
+
+    // Only filter by user_id if not admin
+    if (!isAdmin) {
+      whereClause.user_id = req.user.id;
+    }
+
+    // Add search conditions if search exists
+    if (search) {
+      whereClause[Op.or] = [
+        { full_name: { [Op.iLike]: `%${search}%` } },
+        { phone_number: { [Op.iLike]: `%${search}%` } },
+      ];
+    }
+
     const addresses = await Addresses.findAll({
-      where: {
-        [Op.or]: [
-          { full_name: { [Op.iLike]: `%${search}%` } },
-          { phone_number: { [Op.iLike]: `%${search}%` } },
-        ],
-      },
+      where: whereClause,
     });
+
+    // const addresses = await Addresses.findAll({
+    //   where: {
+    //     user_id: isAdmin ? "how to get all ids" : req.user.id,
+    //     [Op.or]: [
+    //       { full_name: { [Op.iLike]: `%${search}%` } },
+    //       { phone_number: { [Op.iLike]: `%${search}%` } },
+    //     ],
+    //   },
+    // });
 
     res.status(200).json({ addresses, success: true });
   } catch (error) {

@@ -19,37 +19,19 @@ import {
   userResetPasswordSchema,
   userVerifySchema,
 } from "../utils/validate";
-import {
-  authenticateAdminToken,
-  authenticateToken,
-} from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
 import {
   sendVerificationCode,
   verifyCode,
 } from "../controllers/verificationCodes";
 import { verifyPhone } from "../utils/verifyPhone";
+import { UserRoles } from "../enums/userRolesEnum";
 
 const router = express.Router();
 
 router.post("/signup", validateRequest(userSignupSchema), signup);
 
 router.post("/login", validateRequest(userLoginSchema), login);
-
-router.get("/me", authenticateToken, getUserProfile);
-
-router.post(
-  "/update_profile",
-  authenticateToken,
-  validateRequest(userUpdateProfileSchema),
-  updateUserProfile
-);
-
-router.post(
-  "/change_password",
-  authenticateToken,
-  validateRequest(userChangePasswordSchema),
-  changePassword
-);
 
 router.post(
   "/reset_password",
@@ -65,8 +47,26 @@ router.post(
   verifyUser
 );
 
+router.use(authenticateToken);
+
+router.get("/me", getUserProfile);
+
+router.post(
+  "/update_profile",
+  validateRequest(userUpdateProfileSchema),
+  updateUserProfile
+);
+
+router.post(
+  "/change_password",
+  validateRequest(userChangePasswordSchema),
+  changePassword
+);
+
 router.post("/verify_signup", verifyUserInfo);
 
-router.get("/users_list", authenticateAdminToken, userList);
+router.use(authorize([UserRoles.Admin]));
+
+router.get("/users_list", userList);
 
 export default router;

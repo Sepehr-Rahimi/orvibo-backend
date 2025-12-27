@@ -11,7 +11,7 @@ export interface usersAttributes {
   password: string;
   created_at: Date;
   last_name?: string;
-  role?: number;
+  role: number;
   status: number;
 }
 
@@ -41,7 +41,7 @@ export class users
   password!: string;
   created_at!: Date;
   last_name?: string;
-  role?: number;
+  role!: number;
   status!: number;
 
   // users hasMany addresses via user_id
@@ -107,7 +107,7 @@ export class users
         },
         role: {
           type: DataTypes.INTEGER,
-          allowNull: true,
+          allowNull: false,
           defaultValue: 1,
           comment: "1=customer;2=admin",
         },

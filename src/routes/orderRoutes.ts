@@ -28,45 +28,36 @@ import {
   updateOrder,
   verifyPayment,
 } from "../controllers/ordersController";
-import {
-  authenticateAdminToken,
-  authenticateToken,
-} from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
+import { UserRoles } from "../enums/userRolesEnum";
 const router = express.Router();
 
-router.get("/list", authenticateToken, listOrders);
-
-router.get("/list/admin", authenticateAdminToken, listOrdersAdmin);
-
-router.get("/one/:id", authenticateToken, getOrder);
-
-router.get("/:id/pdf", authenticateToken, createOrderPdf);
+router.use(authenticateToken);
 
 router.post("/verify-payment", verifyPayment);
 
-router.post("/finalize-order", authenticateToken, finalizeUserOrder);
+router.get("/list", listOrders);
 
-router.post(
-  "/create",
-  authenticateToken,
-  validateRequest(createOrderSchema),
-  createOrder
-);
+router.get("/one/:id", getOrder);
+
+router.get("/:id/pdf", createOrderPdf);
+
+router.post("/finalize-order", finalizeUserOrder);
+
+router.post("/create", validateRequest(createOrderSchema), createOrder);
+
+router.get("/list/admin", authorize([UserRoles.Admin]), listOrdersAdmin);
+
+router.use(authorize([UserRoles.Admin, UserRoles.Seller]));
 
 router.post(
   "/adminCreate",
-  authenticateAdminToken,
   validateRequest(createOrderAdminSchema),
   adminCreateOrder
 );
 
-router.post(
-  "/update/:id",
-  authenticateAdminToken,
-  validateRequest(updateOrderSchema),
-  updateOrder
-);
+router.post("/update/:id", validateRequest(updateOrderSchema), updateOrder);
 
-router.post("/delete/:id", authenticateAdminToken, deleteOrder);
+router.post("/delete/:id", deleteOrder);
 
 export default router;

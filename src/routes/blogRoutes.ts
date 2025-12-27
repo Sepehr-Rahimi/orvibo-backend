@@ -12,37 +12,38 @@ import {
   singleBlog,
   updateBlog,
 } from "../controllers/blogsController";
-import categoryImageUpload from "../config/multer/categoryImageUpload";
 import blogCoverUpload from "../config/multer/blogCoverUpload";
-import { authenticateAdminToken } from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
+import { UserRoles } from "../enums/userRolesEnum";
 
 const router = Router();
 
+router.get("/one/:id", singleBlog);
+router.get("/title/:title", getBlogByTitle);
+router.get("/list/", blogList);
+
+router.use(authenticateToken, authorize([UserRoles.Admin]));
+
 router.post(
   "/create",
-  authenticateAdminToken,
   blogCoverUpload.single("cover"),
   validateRequest(createBlogSchema),
   createBlog
 );
 
-router.get("/list/", blogList);
-router.get("/admin_list/", authenticateAdminToken, adminBlogList);
+router.get("/admin_list/", adminBlogList);
 
-router.get("/one/:id", singleBlog);
-router.get("/admin_one/:id", authenticateAdminToken, adminSingleBlog);
+router.get("/admin_one/:id", adminSingleBlog);
 
-router.get("/title/:title", getBlogByTitle);
-router.get("/admin_title/:title", authenticateAdminToken, getAdminBlogByTitle);
+router.get("/admin_title/:title", getAdminBlogByTitle);
 
 router.post(
   "/update/:id",
-  authenticateAdminToken,
   blogCoverUpload.single("cover"),
   validateRequest(updateBlogSchema),
   updateBlog
 );
 
-router.post("/delete/:id", authenticateAdminToken, deleteBlog);
+router.post("/delete/:id", deleteBlog);
 
 export default router;

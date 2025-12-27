@@ -1,17 +1,21 @@
 import { Router } from "express";
-import { authenticateAdminToken } from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
 import {
   GetCurrency,
   getDollarToIrrExchange,
   UpdateCurrency,
 } from "../controllers/variablesController";
+import { UserRoles } from "../enums/userRolesEnum";
 
 const router = Router();
-
-router.post("/currency/update", authenticateAdminToken, UpdateCurrency);
 
 router.get("/currency/get", GetCurrency);
 
 router.get("/irrExchange/get", getDollarToIrrExchange);
+
+router.use(authenticateToken);
+router.use(authorize([UserRoles.Admin]));
+
+router.post("/currency/update", UpdateCurrency);
 
 export default router;

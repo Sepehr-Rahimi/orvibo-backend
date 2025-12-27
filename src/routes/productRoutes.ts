@@ -17,26 +17,31 @@ import {
 import productImageUpload from "../config/multer/productImageUpload";
 import validateRequest from "../middleware/validateRequest";
 import { createProductsSchema, updateProductsSchema } from "../utils/validate";
-import { authenticateAdminToken } from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
+import { UserRoles } from "../enums/userRolesEnum";
 const router = express.Router();
 
 router.get("/list", productList);
 
-router.get("/admin_list", authenticateAdminToken, adminProductList);
-
 router.get("/search", searchProduct);
-
-router.get("/one/:id", singleProduct);
 
 router.get("/name/:name", singleProductByName);
 
+router.get("/one/:id", singleProduct);
+
 router.get("/slug/:slug", singleProductBySlug);
 
-router.get("/admin_one/:id", authenticateAdminToken, adminSingleProduct);
+router.get("/similar_products", similarProducts);
+
+router.get("/product-category", getProductCategories);
+
+router.use(authenticateToken);
+router.use(authorize([UserRoles.Admin]));
+
+router.get("/admin_one/:id", adminSingleProduct);
 
 router.post(
   "/create",
-  authenticateAdminToken,
   productImageUpload.array("images[]"),
   validateRequest(createProductsSchema),
   createProduct
@@ -44,18 +49,15 @@ router.post(
 
 router.post(
   "/update/:id",
-  authenticateAdminToken,
   productImageUpload.array("images[]"),
   validateRequest(updateProductsSchema),
   updateProduct
 );
 
-router.post("/delete/:id", authenticateAdminToken, deleteProduct);
+router.post("/delete/:id", deleteProduct);
 
-router.post("/delete_images/:id", authenticateAdminToken, deleteProductImages);
+router.post("/delete_images/:id", deleteProductImages);
 
-router.get("/similar_products", similarProducts);
-
-router.get("/product-category", getProductCategories);
+router.get("/admin_list", adminProductList);
 
 export default router;

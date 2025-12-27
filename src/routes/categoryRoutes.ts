@@ -13,17 +13,10 @@ import {
   updateCategory,
 } from "../controllers/categoryController";
 import categoryImageUpload from "../config/multer/categoryImageUpload";
-import { authenticateAdminToken } from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
+import { UserRoles } from "../enums/userRolesEnum";
 
 const router = Router();
-
-router.post(
-  "/create",
-  authenticateAdminToken,
-  categoryImageUpload.single("image_url"),
-  validateRequest(createCategorySchema),
-  createCategory
-);
 
 router.get("/list/:parent_id?", categoryList);
 
@@ -37,14 +30,22 @@ router.get("/name/:name", singleCategoryByName);
 
 router.get("/parent_categories/:id?", parentCategories);
 
+router.use(authenticateToken, authorize([UserRoles.Admin]));
+
+router.post(
+  "/create",
+  categoryImageUpload.single("image_url"),
+  validateRequest(createCategorySchema),
+  createCategory
+);
+
 router.post(
   "/update/:id",
-  authenticateAdminToken,
   categoryImageUpload.single("image_url"),
   validateRequest(createCategorySchema),
   updateCategory
 );
 
-router.post("/delete/:id", authenticateAdminToken, deleteCategory);
+router.post("/delete/:id", deleteCategory);
 
 export default router;

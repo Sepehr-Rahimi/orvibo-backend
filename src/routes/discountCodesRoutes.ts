@@ -1,9 +1,6 @@
 import { Router } from "express";
 import validateRequest from "../middleware/validateRequest";
-import {
-  authenticateAdminToken,
-  authenticateToken,
-} from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
 import {
   createDiscountCode,
   deleteDiscountCode,
@@ -16,30 +13,33 @@ import {
   createDiscountCodeSchema,
   updateDiscountCodeSchema,
 } from "../utils/validate";
+import { UserRoles } from "../enums/userRolesEnum";
 
 const router = Router();
-
-// Create a new brand
-router.post(
-  "/create",
-  authenticateAdminToken,
-  validateRequest(createDiscountCodeSchema),
-  createDiscountCode
-);
 
 router.get("/list", listDiscountCodes);
 
 router.get("/one/:id", getDiscountCode);
 
+router.use(authenticateToken);
+
+router.post("/validate", validateDiscountCode);
+
+router.use(authorize([UserRoles.Admin]));
+
+// Create a new brand
+router.post(
+  "/create",
+  validateRequest(createDiscountCodeSchema),
+  createDiscountCode
+);
+
 router.post(
   "/update/:id",
-  authenticateAdminToken,
   validateRequest(updateDiscountCodeSchema),
   updateDiscountCode
 );
 
-router.post("/delete/:id", authenticateAdminToken, deleteDiscountCode);
-
-router.post("/validate", authenticateToken, validateDiscountCode);
+router.post("/delete/:id", deleteDiscountCode);
 
 export default router;

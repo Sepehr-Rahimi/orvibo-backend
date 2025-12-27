@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { authenticateAdminToken } from "../middleware/authMiddleware";
+import { authenticateToken, authorize } from "../middleware/authMiddleware";
 import bannerCoverUpload from "../config/multer/bannerCoverUpload";
 import validateRequest from "../middleware/validateRequest";
 import { createBannerSchema, updateBannerSchema } from "../utils/validate";
@@ -11,30 +11,31 @@ import {
   singleBanner,
   updateBanner,
 } from "../controllers/bannersController";
+import { UserRoles } from "../enums/userRolesEnum";
 
 const router = Router();
 
+router.get("/list/", bannerList);
+router.get("/one/:id", singleBanner);
+
+router.use(authenticateToken, authorize([UserRoles.Admin]));
+
 router.post(
   "/create",
-  authenticateAdminToken,
   bannerCoverUpload.single("cover"),
   validateRequest(createBannerSchema),
   createBanner
 );
 
-router.get("/list/", bannerList);
-router.get("/admin_list/", authenticateAdminToken, adminBannerList);
-
-router.get("/one/:id", singleBanner);
+router.get("/admin_list/", adminBannerList);
 
 router.post(
   "/update/:id",
-  authenticateAdminToken,
   bannerCoverUpload.single("cover"),
   validateRequest(updateBannerSchema),
   updateBanner
 );
 
-router.post("/delete/:id", authenticateAdminToken, deleteBanner);
+router.post("/delete/:id", deleteBanner);
 
 export default router;
