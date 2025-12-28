@@ -5,7 +5,6 @@ import {
   UniqueConstraintError,
   ForeignKeyConstraintError,
   DatabaseError,
-  ValidationErrorItem,
 } from "sequelize";
 
 export const errorHandler = (
@@ -25,8 +24,8 @@ export const errorHandler = (
 
   const handler = sequelizeErrorHandlers.find((h) => error instanceof h.class);
 
-  console.log("handler error ", error?.parent?.constraint);
-  console.log("hendler : ", handler);
+  // console.log("handler error ", error?.parent?.constraint);
+  // console.log("hendler : ", handler);
 
   if (handler) {
     res.status(handler.status).json(handler.message(error?.parent));
