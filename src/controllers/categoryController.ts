@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { categoriesAttributes, initModels } from "../models/init-models";
-import { formatedFileUrl } from "../utils/fileUtils";
+import { formattedFileUrl } from "../utils/fileUtils";
 import { updateFile } from "../utils/fileUtils";
 import { deleteFile } from "../utils/fileUtils";
 import { getParentCategories } from "../utils/categoryUtils";
@@ -64,7 +64,7 @@ export const categoryList = async (
 
     const categoriesWithImage = categories.map((c) => ({
       ...c.dataValues,
-      image_url: formatedFileUrl(c.image_url),
+      image_url: formattedFileUrl(c.image_url),
     }));
 
     // Return the list of categories in the response
@@ -91,7 +91,7 @@ export const allCategoryList = async (
 
     const categoriesWithImage = categories.map((c) => ({
       ...c.dataValues,
-      image_url: formatedFileUrl(c.image_url),
+      image_url: formattedFileUrl(c.image_url),
     }));
 
     // Return the list of categories in the response
@@ -130,7 +130,7 @@ export const singleCategory = async (
       success: true,
       data: {
         ...category.dataValues,
-        image_url: formatedFileUrl(category.image_url),
+        image_url: formattedFileUrl(category.image_url),
       },
     });
   } catch (error) {
@@ -163,7 +163,7 @@ export const singleCategoryByName = async (
       success: true,
       data: {
         ...category.dataValues,
-        image_url: formatedFileUrl(category.image_url),
+        image_url: formattedFileUrl(category.image_url),
       },
     });
   } catch (error) {
@@ -296,7 +296,7 @@ export const categoryTreeList = async (
       return {
         ...category.dataValues,
         label: category.name,
-        image_url: formatedFileUrl(category.image_url),
+        image_url: formattedFileUrl(category.image_url),
       };
     });
 

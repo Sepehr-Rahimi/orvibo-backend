@@ -2,7 +2,7 @@ import { initModels } from "../models/init-models";
 
 import OpenAI from "openai";
 
-import { formatedFileUrl } from "./fileUtils";
+import { formattedFileUrl } from "./fileUtils";
 import sequelize from "../config/database";
 
 const Category = initModels().categories;
@@ -151,7 +151,7 @@ Output:
 
     const formatedProducts = filteredProducts.map((p) => ({
       ...p.dataValues,
-      images: p.images?.map((image) => formatedFileUrl(image)),
+      images: p.images?.map((image) => formattedFileUrl(image)),
       embedding: undefined,
     }));
 

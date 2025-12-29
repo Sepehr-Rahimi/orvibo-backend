@@ -8,7 +8,7 @@ import {
 import {
   extractImages,
   fileUrlToPath,
-  formatedFileUrl,
+  formattedFileUrl,
 } from "../utils/fileUtils";
 import { deleteFile } from "../utils/fileUtils";
 import { getChildCategories } from "../utils/categoryUtils";
@@ -198,7 +198,7 @@ export const createProduct = async (
       message: "Product created successfully",
       product: {
         ...newProduct.dataValues,
-        images: newProduct.images?.map((image) => formatedFileUrl(image)),
+        images: newProduct.images?.map((image) => formattedFileUrl(image)),
       },
     });
     // await transaction?.commit();
@@ -302,7 +302,7 @@ export const productList = async (
 
     const formattedProducts = products.map((product) => ({
       ...product.dataValues,
-      images: product.images?.map((image) => formatedFileUrl(image)),
+      images: product.images?.map((image) => formattedFileUrl(image)),
     }));
 
     res.status(200).json({
@@ -390,7 +390,7 @@ export const adminProductList = async (
       return {
         ...product.dataValues,
         // discount_percentage,
-        images: product.images?.map((image) => formatedFileUrl(image)),
+        images: product.images?.map((image) => formattedFileUrl(image)),
       };
     });
 
@@ -474,7 +474,7 @@ export const searchProduct = async (
 
     const formattedProducts = products.map((product) => ({
       ...product.dataValues,
-      images: product.images?.map((image) => formatedFileUrl(image)),
+      images: product.images?.map((image) => formattedFileUrl(image)),
     }));
 
     res.status(200).json({
@@ -532,7 +532,7 @@ export const singleProductByName = async (
       success: true,
       data: {
         ...product.dataValues,
-        images: product.images?.map((image) => formatedFileUrl(image)),
+        images: product.images?.map((image) => formattedFileUrl(image)),
       },
     });
   } catch (error) {
@@ -598,7 +598,7 @@ export const singleProductBySlug = async (req: Request, res: Response) => {
     res.status(200).json({
       product: {
         ...product.dataValues,
-        images: product.images?.map((image) => formatedFileUrl(image)),
+        images: product.images?.map((image) => formattedFileUrl(image)),
         variants: product.variants
           ? formatVariants(dollarToIrrExchange, product?.variants)
           : undefined,
@@ -665,7 +665,7 @@ export const singleProduct = async (
       data: {
         ...product.dataValues,
         // discount_percentage,
-        images: product.images?.map((image) => formatedFileUrl(image)),
+        images: product.images?.map((image) => formattedFileUrl(image)),
       },
     });
   } catch (error) {
@@ -735,7 +735,7 @@ export const adminSingleProduct = async (
         ...product.dataValues,
         variants: formatedVariants,
         // discount_percentage,
-        images: product.images?.map((image) => formatedFileUrl(image)),
+        images: product.images?.map((image) => formattedFileUrl(image)),
       },
     });
   } catch (error) {
@@ -935,7 +935,7 @@ export const updateProduct = async (
       message: "Product updated successfully",
       product: {
         ...product.dataValues,
-        images: updatedImages?.map((image) => formatedFileUrl(image)),
+        images: updatedImages?.map((image) => formattedFileUrl(image)),
       },
     });
   } catch (error) {
@@ -986,7 +986,7 @@ export const deleteProductImages = async (
       message: "Product updated successfully",
       // product: {
       //   ...product.dataValues,
-      //   images: updatedImages?.map((image) => formatedFileUrl(image)),
+      //   images: updatedImages?.map((image) => formattedFileUrl(image)),
       // },
     });
   } catch (error) {
@@ -1110,7 +1110,7 @@ export const similarProducts = async (
 
     const formatedProducts = foundProduct.map((p) => ({
       ...p.dataValues,
-      images: p.images?.map((image) => formatedFileUrl(image)),
+      images: p.images?.map((image) => formattedFileUrl(image)),
     }));
 
     res.status(200).json({ success: true, data: formatedProducts });
@@ -1158,7 +1158,7 @@ export const getProductCategories = async (req: Request, res: Response) => {
                   ...productsCategory.map((product) => ({
                     ...product.dataValues,
                     images: product.dataValues?.images?.map((image) =>
-                      formatedFileUrl(image)
+                      formattedFileUrl(image)
                     ),
                     ...(includeVariants ? {} : { variants: undefined }),
                   })),

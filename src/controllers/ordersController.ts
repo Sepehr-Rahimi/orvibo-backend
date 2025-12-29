@@ -9,7 +9,7 @@ import {
   products,
 } from "../models/init-models";
 import { AuthenticatedRequest } from "../types/requestsTypes";
-import { formatedFileUrl } from "../utils/fileUtils";
+import { formattedFileUrl } from "../utils/fileUtils";
 import {
   paymentUrl,
   RequestPayment,
@@ -817,7 +817,7 @@ export const getOrder = async (
           product: {
             ...item.product.dataValues,
             images: item?.product?.images?.map((image) =>
-              formatedFileUrl(image)
+              formattedFileUrl(image)
             ), // Example change
           },
         })),

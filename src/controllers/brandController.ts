@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { initModels } from "../models/init-models";
-import { formatedFileUrl } from "../utils/fileUtils";
+import { formattedFileUrl } from "../utils/fileUtils";
 import { updateFile } from "../utils/fileUtils";
 import { deleteFile } from "../utils/fileUtils";
 
@@ -35,7 +35,7 @@ export const createBrand = async (
       message: "Brand created successfully",
       brand: {
         ...newBrand.dataValues,
-        logo_url: formatedFileUrl(newBrand.logo_url),
+        logo_url: formattedFileUrl(newBrand.logo_url),
       },
     });
     return;
@@ -54,7 +54,7 @@ export const brandList = async (req: Request, res: Response): Promise<void> => {
     const formatedBrands = brands.map((brand) => {
       return {
         ...brand.dataValues,
-        logo_url: formatedFileUrl(brand.logo_url),
+        logo_url: formattedFileUrl(brand.logo_url),
       };
     });
 
@@ -100,7 +100,7 @@ export const singleBrand = async (
       success: true,
       data: {
         ...brand.dataValues,
-        logo_url: formatedFileUrl(brand.logo_url),
+        logo_url: formattedFileUrl(brand.logo_url),
       },
     });
   } catch (error) {
@@ -132,7 +132,7 @@ export const singleBrandByName = async (
       success: true,
       data: {
         ...brand.dataValues,
-        logo_url: formatedFileUrl(brand.logo_url),
+        logo_url: formattedFileUrl(brand.logo_url),
       },
     });
   } catch (error) {

@@ -1,8 +1,8 @@
 import { bannersAttributes, initModels } from "../models/init-models";
-import { formattedBanner } from "../utils/bannerUtils";
+import { formattedCover } from "../utils/dataUtils";
 import { pick } from "../utils/dataUtils";
 import { AppError } from "../utils/error";
-import { deleteFile, formatedFileUrl, updateFile } from "../utils/fileUtils";
+import { deleteFile, updateFile } from "../utils/fileUtils";
 
 const Banners = initModels().banners;
 
@@ -27,7 +27,7 @@ export const createBannerService = async (
     cover,
   });
 
-  return formattedBanner(newBanner.dataValues);
+  return formattedCover(newBanner.dataValues);
 };
 
 export const bannerListService = async () => {
@@ -42,7 +42,7 @@ export const bannerListService = async () => {
   });
 
   const formattedBanners = banners.map((banner) =>
-    formattedBanner(banner.dataValues)
+    formattedCover(banner.dataValues)
   );
 
   return formattedBanners;
@@ -51,7 +51,7 @@ export const bannerListService = async () => {
 export const adminBannerListService = async () => {
   const banners = await Banners.findAll();
   const formattedBanners = banners.map((banner) =>
-    formattedBanner(banner.dataValues)
+    formattedCover(banner.dataValues)
   );
 
   return formattedBanners;
@@ -68,7 +68,7 @@ export const singleBannerByIdService = async (bannerId: string) => {
     throw new AppError("بنر مورد نظر یافت نشد", 404);
   }
 
-  return formattedBanner(banner.dataValues);
+  return formattedCover(banner.dataValues);
 };
 
 export const updateBannerService = async (
