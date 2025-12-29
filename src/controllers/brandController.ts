@@ -1,184 +1,94 @@
-import { Request, Response } from "express";
-import { initModels } from "../models/init-models";
-import { formattedFileUrl } from "../utils/fileUtils";
-import { updateFile } from "../utils/fileUtils";
-import { deleteFile } from "../utils/fileUtils";
+import { NextFunction, Request, Response } from "express";
 
-const Brand = initModels().brands;
+import {
+  brandListService,
+  createBrandService,
+  delteBrandService,
+  singleBrandByNameService,
+  singleBrandService,
+  updateBrandService,
+} from "../services/brandServices";
 
 export const createBrand = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   try {
-    const { name, website_url, description, english_name, is_active } =
-      req.body;
-
-    // Check if a logo file was uploaded
-    if (!req.file) {
-      res.status(400).json({ error: "Logo file is required." });
-      return;
-    }
-
-    const logo_url = req.file.path.replace(/\\/g, "/"); // Path where the uploaded file is stored
-    // Create the brand
-    const newBrand = await Brand.create({
-      name,
-      logo_url,
-      website_url,
-      description,
-      english_name,
-      is_active: is_active === "true", // Convert string "true"/"false" to boolean
-    });
+    const newBrand = await createBrandService({ ...req.body, file: req.file });
 
     res.status(201).json({
       message: "Brand created successfully",
-      brand: {
-        ...newBrand.dataValues,
-        logo_url: formattedFileUrl(newBrand.logo_url),
-      },
+      brand: newBrand,
     });
     return;
   } catch (error) {
-    console.error("Error creating brand:", error);
-    res.status(500).json({ error: "Internal server error" });
-    return;
+    next(error);
   }
 };
 
-export const brandList = async (req: Request, res: Response): Promise<void> => {
+export const brandList = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> => {
   try {
-    // Fetch all brands from the database
-    const brands = await Brand.findAll();
-
-    const formatedBrands = brands.map((brand) => {
-      return {
-        ...brand.dataValues,
-        logo_url: formattedFileUrl(brand.logo_url),
-      };
-    });
-
-    // Check if there are no brands found
-    if (brands.length === 0) {
-      res.status(200).json({ success: true, data: [] });
-      return;
-    }
-
-    // Return the list of brands in the response
-    res.status(200).json({ success: true, data: formatedBrands });
+    const brands = await brandListService();
+    res.status(200).json({ success: true, data: brands });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
 
 export const singleBrand = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   const { id } = req.params;
 
   try {
-    // Validate the ID
-    const parsedId = parseInt(id, 10);
-    if (isNaN(parsedId)) {
-      res.status(400).json({ success: false, message: "Invalid brand ID." });
-      return;
-    }
-
-    // Fetch the brand from the database
-    const brand = await Brand.findByPk(parsedId);
-
-    // Check if the brand exists
-    if (!brand) {
-      res.status(400).json({ success: false, message: "Brand not found." });
-      return;
-    }
+    const brand = await singleBrandService(id);
 
     // Return the brand details in the response
     res.status(200).json({
       success: true,
-      data: {
-        ...brand.dataValues,
-        logo_url: formattedFileUrl(brand.logo_url),
-      },
+      data: brand,
     });
   } catch (error) {
-    console.error("Error fetching brand:", error);
-    res.status(500).json({ success: false, message: "Server error." });
+    next(error);
   }
 };
 
 export const singleBrandByName = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
-  const { name } = req.params;
+  const brandName = decodeURIComponent(req.params?.name);
 
   try {
     // Fetch the brand from the database
-    const brand = await Brand.findOne({
-      where: { name: decodeURIComponent(name) },
-    });
-
-    // Check if the brand exists
-    if (!brand) {
-      res.status(400).json({ success: false, message: "Brand not found." });
-      return;
-    }
+    const brand = await singleBrandByNameService(brandName);
 
     // Return the brand details in the response
     res.status(200).json({
       success: true,
-      data: {
-        ...brand.dataValues,
-        logo_url: formattedFileUrl(brand.logo_url),
-      },
+      data: brand,
     });
   } catch (error) {
-    console.error("Error fetching brand:", error);
-    res.status(500).json({ success: false, message: "Server error." });
+    next(error);
   }
 };
 
 export const updateBrand = async (
   req: Request,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   try {
-    const { name, website_url, description, english_name, is_active } =
-      req.body;
-
     const { id } = req.params;
-
-    // Ensure the user is authenticated
-    if (!id) {
-      res.status(401).json({ error: "کاربری پیدا نشد" });
-      return;
-    }
-
-    const brand = await Brand.findByPk(id);
-
-    if (!brand) {
-      res.status(404).json({ error: "کاربری پیدا نشده" });
-      return;
-    }
-
-    // Update user fields
-
-    // Handle file upload
-    const newLogoPath = req.file ? req.file.path : undefined;
-    const updatedLogoPath = await updateFile(newLogoPath, brand.logo_url);
-
-    // Update the brand record
-    await brand.update({
-      name,
-      english_name,
-      is_active: is_active === "true", // Convert string to boolean if necessary
-      logo_url: updatedLogoPath,
-      website_url,
-      description,
-    });
+    const brand = await updateBrandService(id, { ...req.body, file: req.file });
 
     res.status(200).json({
       message: "اطلاعات کاربر با موفقیت ویرایش شد",
@@ -186,10 +96,10 @@ export const updateBrand = async (
     });
     return;
   } catch (error) {
-    console.error("Error fetching brand:", error);
-    res.status(500).json({ success: false, message: "Server error." });
+    next(error);
   }
 };
+
 export const deleteBrand = async (
   req: Request,
   res: Response
@@ -198,23 +108,7 @@ export const deleteBrand = async (
 
   try {
     // Validate the ID
-    const parsedId = parseInt(id, 10);
-    if (isNaN(parsedId)) {
-      res.status(400).json({ success: false, message: "Invalid brand ID." });
-      return;
-    }
-
-    // Find the brand in the database
-    const brand = await Brand.findByPk(parsedId);
-    if (!brand) {
-      res.status(404).json({ success: false, message: "Brand not found." });
-      return;
-    }
-
-    // Delete the logo file if it exists
-    deleteFile(brand.logo_url);
-    // Delete the brand from the database
-    await brand.destroy();
+    const brand = await delteBrandService(id);
 
     res
       .status(200)

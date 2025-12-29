@@ -9,10 +9,16 @@ export const pick = (data: { [key: string]: any }, pick: string[]) => {
   );
 };
 
-export const formattedCover = (data: {
-  [key: string]: any;
-  cover?: string;
-}) => ({
-  ...data,
-  cover: formattedFileUrl(data?.cover),
-});
+export const formattedDataUrl = <T extends Record<string, any>>(
+  data: T,
+  key: keyof T
+): T => {
+  const mustBeFormat = data?.[key];
+
+  return {
+    ...data,
+    [key]: Array.isArray(mustBeFormat)
+      ? mustBeFormat.map((singleFile: string) => formattedFileUrl(singleFile))
+      : formattedFileUrl(mustBeFormat),
+  };
+};

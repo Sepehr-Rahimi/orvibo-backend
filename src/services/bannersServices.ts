@@ -1,5 +1,5 @@
 import { bannersAttributes, initModels } from "../models/init-models";
-import { formattedCover } from "../utils/dataUtils";
+import { formattedDataUrl } from "../utils/dataUtils";
 import { pick } from "../utils/dataUtils";
 import { AppError } from "../utils/error";
 import { deleteFile, updateFile } from "../utils/fileUtils";
@@ -27,7 +27,7 @@ export const createBannerService = async (
     cover,
   });
 
-  return formattedCover(newBanner.dataValues);
+  return formattedDataUrl(newBanner.dataValues, "cover");
 };
 
 export const bannerListService = async () => {
@@ -42,7 +42,7 @@ export const bannerListService = async () => {
   });
 
   const formattedBanners = banners.map((banner) =>
-    formattedCover(banner.dataValues)
+    formattedDataUrl(banner.dataValues, "cover")
   );
 
   return formattedBanners;
@@ -51,7 +51,7 @@ export const bannerListService = async () => {
 export const adminBannerListService = async () => {
   const banners = await Banners.findAll();
   const formattedBanners = banners.map((banner) =>
-    formattedCover(banner.dataValues)
+    formattedDataUrl(banner.dataValues, "cover")
   );
 
   return formattedBanners;
@@ -68,7 +68,7 @@ export const singleBannerByIdService = async (bannerId: string) => {
     throw new AppError("بنر مورد نظر یافت نشد", 404);
   }
 
-  return formattedCover(banner.dataValues);
+  return formattedDataUrl(banner.dataValues, "cover");
 };
 
 export const updateBannerService = async (

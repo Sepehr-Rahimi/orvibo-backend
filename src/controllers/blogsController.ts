@@ -1,8 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { initModels } from "../models/init-models";
-import { formattedFileUrl } from "../utils/fileUtils";
-import { updateFile } from "../utils/fileUtils";
-import { deleteFile } from "../utils/fileUtils";
+
 import {
   adminBlogListService,
   adminSingleBlogByTitleService,
@@ -14,8 +11,6 @@ import {
   singleBlogService,
   updateBlogService,
 } from "../services/blogsServices";
-
-const Blog = initModels().blogs;
 
 // Create Blog
 export const createBlog = async (

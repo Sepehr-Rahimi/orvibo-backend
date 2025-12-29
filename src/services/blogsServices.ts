@@ -1,6 +1,6 @@
 import { blogsAttributes } from "../models/blogs";
 import { initModels } from "../models/init-models";
-import { formattedCover, pick } from "../utils/dataUtils";
+import { formattedDataUrl, pick } from "../utils/dataUtils";
 import { AppError } from "../utils/error";
 import { deleteFile, updateFile } from "../utils/fileUtils";
 
@@ -35,14 +35,18 @@ export const blogListService = async () => {
       is_published: true,
     },
   });
-  const blogsWithImage = blogs.map((blog) => formattedCover(blog.dataValues));
+  const blogsWithImage = blogs.map((blog) =>
+    formattedDataUrl(blog.dataValues, "cover")
+  );
 
   return blogsWithImage;
 };
 
 export const adminBlogListService = async () => {
   const blogs = await Blogs.findAll();
-  const blogsWithImage = blogs.map((blog) => formattedCover(blog.dataValues));
+  const blogsWithImage = blogs.map((blog) =>
+    formattedDataUrl(blog.dataValues, "cover")
+  );
 
   return blogsWithImage;
 };
@@ -58,7 +62,7 @@ export const singleBlogService = async (blogId?: number | string) => {
   if (!blog.is_published) {
     throw new AppError("blog is not published", 400);
   }
-  return formattedCover(blog.dataValues);
+  return formattedDataUrl(blog.dataValues, "cover");
 };
 
 export const adminSingleBlogService = async (blogId: string | number) => {
@@ -67,7 +71,7 @@ export const adminSingleBlogService = async (blogId: string | number) => {
     throw new AppError("blog not found", 404);
   }
 
-  return formattedCover(blog.dataValues);
+  return formattedDataUrl(blog.dataValues, "cover");
 };
 
 export const singleBlogByTitleService = async (blogTitle?: string) => {
@@ -87,7 +91,7 @@ export const singleBlogByTitleService = async (blogTitle?: string) => {
     throw new AppError("blog is not published", 400);
   }
 
-  return formattedCover(singleBlog.dataValues);
+  return formattedDataUrl(singleBlog.dataValues, "cover");
 };
 
 export const adminSingleBlogByTitleService = async (blogTitle?: string) => {
@@ -103,7 +107,7 @@ export const adminSingleBlogByTitleService = async (blogTitle?: string) => {
     throw new AppError("blog not found", 404);
   }
 
-  return formattedCover(singleBlog.dataValues);
+  return formattedDataUrl(singleBlog.dataValues, "cover");
 };
 
 export const updateBlogService = async (
