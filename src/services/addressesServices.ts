@@ -59,7 +59,7 @@ export const listAddressesService = async (user_id: number) => {
 
 export const addressByIdService = async (
   addressId: number | string,
-  userId: number
+  userId?: number
 ) => {
   const address = await Addresses.findByPk(addressId);
 
@@ -67,7 +67,7 @@ export const addressByIdService = async (
     throw new AppError("Cant find address", 404);
   }
 
-  if (address.user_id !== userId) {
+  if (userId && address.user_id !== userId) {
     throw new AppError("access denied", 401);
   }
 

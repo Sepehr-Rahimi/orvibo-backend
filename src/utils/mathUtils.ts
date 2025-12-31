@@ -48,6 +48,8 @@ export const getCurrentPrice = (...prices: any[]) => {
   return valid.length > 0 ? Math.min(...valid) : 0;
 };
 
+export const normalizeDecimal = (value: number) => Number(value.toFixed(2));
+
 // export const roundToNearest = (value: number, unit: number = 10000) => {
 //   return Math.ceil(value / unit) * unit;
 // };

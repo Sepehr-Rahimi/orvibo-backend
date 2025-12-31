@@ -28,7 +28,8 @@ export const errorHandler = (
   // console.log("hendler : ", handler);
 
   if (handler) {
-    res.status(handler.status).json(handler.message(error?.parent));
+    res.status(handler?.status).json(handler.message(error?.parent));
+    console.log(error);
     return;
   }
 
@@ -45,9 +46,9 @@ const sequelizeErrorHandlers = [
     status: 400,
     message: (err: ValidationError) => ({
       message: "اعتبارسنجی داده‌ها انجام نشد",
-      errors: err.errors.map((e) => ({
-        field: e.path,
-        message: e.message,
+      errors: err?.errors?.map((e) => ({
+        field: e?.path,
+        message: e?.message,
       })),
     }),
   },

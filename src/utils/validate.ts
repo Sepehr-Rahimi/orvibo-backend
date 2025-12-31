@@ -131,6 +131,7 @@ export const createOrderSchema = Joi.object({
   description: Joi.string().allow(""),
   services: Joi.number(),
   guarantee: Joi.number(),
+  shipping: Joi.number(),
   businessProfit: Joi.number(),
   items: Joi.array()
     .items(
@@ -202,6 +203,7 @@ export const updateOrderSchema = Joi.object({
   shippingPercentage: Joi.number(),
   items: Joi.array().items(
     Joi.object({
+      id: Joi.number().optional(),
       product_id: Joi.number().required(),
       variant_id: Joi.number().required(),
       quantity: Joi.number().required(),
