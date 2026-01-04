@@ -11,15 +11,15 @@ export const calculateAdditionalOrderCosts = <T extends string>(
   cost_based: number
 ) => {
   return additionalCosts.reduce((result, singleCost) => {
-    if (singleCost.percentage) {
+    if (singleCost.percentage && singleCost.predetermined !== 0) {
       const calculatedCost = calculatePercentage(
         singleCost.percentage,
         cost_based
       );
+
       if (
-        singleCost.predetermined !== undefined &&
-        normalizeDecimal(singleCost.predetermined) !==
-          normalizeDecimal(calculatedCost)
+        singleCost.predetermined &&
+        singleCost.predetermined !== calculatedCost
       ) {
         throw new AppError(
           `${singleCost.name} does not match the predetermined amount`,

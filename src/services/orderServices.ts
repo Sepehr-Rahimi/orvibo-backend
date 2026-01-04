@@ -622,7 +622,8 @@ export const getOrderService = async (
     ...order.dataValues,
     products_cost: order?.order_items.reduce(
       (cost: number = 0, item) =>
-        cost + getCurrentPrice(item.price, item.discount_price) * item.quantity,
+        cost +
+        getCurrentPrice([item.price, item.discount_price]) * item.quantity,
       0
     ),
     order_items: order?.order_items.map((item) => ({
@@ -719,7 +720,7 @@ export const updateOrderService = async (
     const items_cost = order.order_items.reduce(
       (cost, item) =>
         (cost +=
-          getCurrentPrice(item.price, item.discount_price) * item.quantity),
+          getCurrentPrice([item.price, item.discount_price]) * item.quantity),
       0
     );
 
@@ -990,9 +991,9 @@ export const validateOrderItemsService = async (items: OrderItemsRequest[]) => {
       throw new AppError("موجودی محصول مورد نظر تمام شده", 400);
     }
 
-    const clientPrice = getCurrentPrice(item.price, item.discount_price);
+    const clientPrice = getCurrentPrice([item.price, item.discount_price]);
 
-    const dbPrice = getCurrentPrice(variant.price, variant.discount_price);
+    const dbPrice = getCurrentPrice([variant.price, variant.discount_price]);
 
     if (clientPrice !== dbPrice) {
       throw new AppError("در بررسی محصولات خطایی رخ داد", 400);

@@ -43,7 +43,7 @@ export const calculatePercentage = (percentage: number, price: number) => {
   return Math.round((result + Number.EPSILON) * 100) / 100;
 };
 
-export const getCurrentPrice = (...prices: any[]) => {
+export const getCurrentPrice = (prices: any[]) => {
   const valid = prices.filter((p) => (typeof p === "number" || +p) && p > 0);
   return valid.length > 0 ? Math.min(...valid) : 0;
 };

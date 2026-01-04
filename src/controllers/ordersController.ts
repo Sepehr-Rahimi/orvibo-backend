@@ -1,32 +1,7 @@
 import { NextFunction, Request, Response } from "express";
-import {
-  addresses,
-  addressesAttributes,
-  initModels,
-  order_items,
-  order_itemsAttributes,
-  orders,
-  products,
-} from "../models/init-models";
+
 import { AuthenticatedRequest } from "../types/requestsTypes";
-import { formattedFileUrl } from "../utils/fileUtils";
-import {
-  paymentUrl,
-  RequestPayment,
-  RequestVerifyPayment,
-  zarinpalErrorMessages,
-} from "../utils/paymentUtils";
-import { useDiscountCode, validateDiscount } from "../utils/discountUtil";
-import { sendFactorSmsOrder, sendSmsSuccessOrder } from "../utils/smsUtils";
-import {
-  calculateCurrencyByIrrPrice,
-  calculateIrPriceByCurrency,
-  calculatePercentage,
-  getCurrentPrice,
-} from "../utils/mathUtils";
-import puppeteer from "puppeteer";
-import fs from "fs";
-import sequelize from "../config/database";
+
 import {
   adminCreateOrderService,
   adminListOrderService,
@@ -37,13 +12,8 @@ import {
   getOrderService,
   listOrdersService,
   updateOrderService,
-  validateOrderItemsService,
   verifyPaymentService,
 } from "../services/orderServices";
-import { AppError } from "../utils/error";
-import { calculateAdditionalOrderCosts } from "../utils/orderUtils";
-import { OrderCosts } from "../enums/orderCostsEnum";
-import { getVariableByName } from "../services/variablesServices";
 
 // type_of_payment === 1 : payment with bankaccount via zarinpal
 // type_of_payment === 0 : siteAdmin create factor
@@ -51,23 +21,6 @@ import { getVariableByName } from "../services/variablesServices";
 // servicesCost : 15% of itemsCost
 // guaranteeCost : 5% of itemsCost
 // businessProfit : 10% of itemsCost
-
-interface OrderItemsWithProduct extends order_items {
-  product: products;
-}
-
-interface OrdersWithOrderItems extends orders {
-  order_items: OrderItemsWithProduct[];
-}
-
-const models = initModels();
-const Orders = models.orders;
-const OrderItems = models.order_items;
-const Address = models.addresses;
-const Product = models.products;
-const users = models.users;
-const ProductVariants = models.products_variants;
-const variables = models.variables;
 
 export const createOrder = async (
   req: AuthenticatedRequest,
