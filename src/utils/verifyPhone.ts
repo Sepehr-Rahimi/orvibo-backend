@@ -3,7 +3,7 @@ import { initModels } from "../models/init-models";
 
 const VerificationCode = initModels().verification_codes;
 
-export const verifyPhone = async (phone: number, code: number) => {
+export const verifyPhone = async (phone: number | string, code: number) => {
   const validCode = await VerificationCode.findOne({
     where: {
       phone_or_email: phone,
