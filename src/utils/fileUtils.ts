@@ -52,7 +52,7 @@ export const extractImages = (files: Express.Multer.File[] | unknown) =>
     ? files.map((file: Express.Multer.File) => file.path.replace(/\\/g, "/"))
     : [];
 
-export const formatedFileUrl = (filePath?: string) => {
+export const formattedFileUrl = (filePath?: string) => {
   if (filePath) {
     const newFilePath = process.env.BASE_URL + filePath;
     return newFilePath.replace(/\\/g, "/");

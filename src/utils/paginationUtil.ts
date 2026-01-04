@@ -1,7 +1,7 @@
-import { Request, Response } from "express";
+import { AppError } from "./error";
 
-const paginationUtil = (req: Request, res: Response) => {
-  let { page, limit = 10 } = req?.query; // Default values if not provided
+const paginationUtil = (params: { page?: string; limit?: string }) => {
+  let { page, limit = 10 } = params; // Default values if not provided
   if (page) {
     const pageNumber = parseInt(page as string, 10);
     const limitNumber = parseInt(limit as string, 10);
@@ -12,8 +12,7 @@ const paginationUtil = (req: Request, res: Response) => {
       pageNumber < 1 ||
       limitNumber < 1
     ) {
-      res.status(400).json({ error: "Invalid page or limit parameters" });
-      return;
+      throw new AppError("invalid page or limit parametrs", 400);
     }
 
     const offset = (pageNumber - 1) * limitNumber; // Calculate offset

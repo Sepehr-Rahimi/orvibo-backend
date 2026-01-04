@@ -1,8 +1,8 @@
 import axios from "axios";
 import { initModels } from "../models/init-models";
 
-// export const paymentUrl = "https://sandbox.zarinpal.com/";
-export const paymentUrl = "https://payment.zarinpal.com/";
+export const paymentUrl = "https://sandbox.zarinpal.com/";
+// export const paymentUrl = "https://payment.zarinpal.com/";
 
 const currency = "IRT";
 

@@ -1,6 +1,11 @@
 import { categoriesAttributes, initModels } from "../models/init-models";
 
 const Category = initModels().categories;
+
+interface categoriesTreeList extends categoriesAttributes {
+  children?: categoriesTreeList[];
+}
+
 /**
  * Recursively fetch all parent categories of a given category.
  * @param categoryId - The ID of the category to start with.
@@ -53,4 +58,23 @@ export const getChildCategories = async (
   await fetchChildren(categoryId);
 
   return childCategories;
+};
+
+export const buildCategoryTree = (
+  categories: categoriesTreeList[],
+  parentId: number | null = null
+): categoriesTreeList[] => {
+  const tree: categoriesTreeList[] = [];
+
+  for (const category of categories) {
+    if (category.parent_id === parentId) {
+      const children = buildCategoryTree(categories, category.id);
+      if (children.length > 0) {
+        category.children = children;
+      }
+      tree.push(category);
+    }
+  }
+
+  return tree;
 };
