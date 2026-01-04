@@ -1,7 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import { initModels } from "../models/init-models";
 import { AuthenticatedRequest } from "../types/requestsTypes";
-import { validateDiscount } from "../utils/discountUtil";
 import {
   createDiscountCodeService,
   deleteDiscountCodeService,
@@ -10,8 +8,6 @@ import {
   updateDiscountCodeService,
   validateDiscountCodeService,
 } from "../services/discountCodesServices";
-
-const DiscountCodes = initModels().discount_codes;
 
 // ایجاد کد تخفیف جدید
 export const createDiscountCode = async (

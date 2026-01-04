@@ -1,8 +1,5 @@
 import { NextFunction, Request, Response } from "express";
-import bcrypt from "bcrypt";
-import jwt from "jsonwebtoken";
 import { initModels } from "../models/init-models";
-import { verifyPhone } from "../utils/verifyPhone";
 import {
   changePasswordService,
   getUserProfileService,
@@ -14,10 +11,6 @@ import {
   verifyUserInfoService,
   verifyUserService,
 } from "../services/userServices";
-
-const User = initModels().users;
-
-const expiresIn = "1d";
 
 export const signup = async (
   req: Request,

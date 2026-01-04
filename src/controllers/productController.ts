@@ -1,36 +1,5 @@
 import { NextFunction, Request, response, Response } from "express";
-import {
-  initModels,
-  products,
-  products_variants,
-  products_variantsAttributes,
-} from "../models/init-models";
-import {
-  extractImages,
-  fileUrlToPath,
-  formattedFileUrl,
-} from "../utils/fileUtils";
-import { deleteFile } from "../utils/fileUtils";
-import { getChildCategories } from "../utils/categoryUtils";
-import { Op, Sequelize } from "sequelize";
-import paginationUtil from "../utils/paginationUtil";
-import { normalizePersian } from "../utils/embeddingUtil";
-import {
-  createProductEmbedding,
-  dataBaseEmbeddingFormat,
-} from "../utils/embeddingUtil";
-import sequelize from "../config/database";
-import {
-  calculateDiscountPercentagePrice,
-  calculateDiscountPercentage,
-  calculateIrPriceByCurrency,
-  calculateNewPriceByNewCurrency,
-} from "../utils/mathUtils";
-import {
-  formatVariants,
-  modifyDiscountPrice,
-  orderingProductImages,
-} from "../utils/productUtils";
+
 import {
   adminProductListService,
   adminSingleProductByIdService,
@@ -46,13 +15,6 @@ import {
   singleProductBySlugService,
   updateProductService,
 } from "../services/productServices";
-
-const Product = initModels().products;
-const Categories = initModels().categories;
-const Brand = initModels().brands;
-const ProductEmbedding = initModels().products_embedding;
-const variables = initModels().variables;
-const ProductVariants = initModels().products_variants;
 
 export const createProduct = async (
   req: Request,

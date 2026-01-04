@@ -20,12 +20,10 @@ import {
   userVerifySchema,
 } from "../utils/validate";
 import { authenticateToken, authorize } from "../middleware/authMiddleware";
-import {
-  sendVerificationCode,
-  verifyCode,
-} from "../controllers/verificationCodes";
+import { sendVerificationCode } from "../controllers/verificationCodes";
 import { verifyPhone } from "../utils/verifyPhone";
 import { UserRoles } from "../enums/userRolesEnum";
+import { verifyCode } from "../middleware/verifyCodeMiddleware";
 
 const router = express.Router();
 
