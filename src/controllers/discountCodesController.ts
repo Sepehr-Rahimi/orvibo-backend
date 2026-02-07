@@ -1,118 +1,108 @@
-import { Request, Response } from "express";
-import { initModels } from "../models/init-models";
+import { NextFunction, Request, Response } from "express";
 import { AuthenticatedRequest } from "../types/requestsTypes";
-import { validateDiscount } from "../utils/discountUtil";
-
-const models = initModels();
-const DiscountCodes = models.discount_codes;
-const Orders = models.orders;
+import {
+  createDiscountCodeService,
+  deleteDiscountCodeService,
+  listDiscountCodesService,
+  singleDiscountCodeService,
+  updateDiscountCodeService,
+  validateDiscountCodeService,
+} from "../services/discountCodesServices";
 
 // ایجاد کد تخفیف جدید
-export const createDiscountCode = async (req: Request, res: Response) => {
+export const createDiscountCode = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const discountCode = await DiscountCodes.create(req.body);
+    const discountCode = await createDiscountCodeService({ ...req.body });
     // console.log(discountCode);
     res.status(201).json({ success: true, data: discountCode });
   } catch (error) {
-    console.error("Error creating discount code:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
 
 // دریافت لیست کدهای تخفیف
-export const listDiscountCodes = async (req: Request, res: Response) => {
+export const listDiscountCodes = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-    const discountCodes = await DiscountCodes.findAll();
+    const discountCodes = await listDiscountCodesService();
     res.status(200).json({ success: true, data: discountCodes });
   } catch (error) {
-    console.error("Error fetching discount codes:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
 
 // دریافت اطلاعات یک کد تخفیف بر اساس ID
-export const getDiscountCode = async (req: Request, res: Response) => {
+export const getDiscountCode = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
-    const discountCode = await DiscountCodes.findByPk(id);
-    if (!discountCode) {
-      res
-        .status(404)
-        .json({ success: false, message: "Discount code not found" });
-      return;
-    }
+    const discountCode = await singleDiscountCodeService(id);
     res.status(200).json({ success: true, data: discountCode });
   } catch (error) {
-    console.error("Error fetching discount code:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
 
 // به‌روزرسانی یک کد تخفیف
-export const updateDiscountCode = async (req: Request, res: Response) => {
+export const updateDiscountCode = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
-    const discountCode = await DiscountCodes.findByPk(id);
-    if (!discountCode) {
-      res
-        .status(404)
-        .json({ success: false, message: "Discount code not found" });
-      return;
-    }
-    await discountCode.update(req.body);
+    const discount = await updateDiscountCodeService(id, { ...req.body });
     res
       .status(200)
       .json({ success: true, message: "Discount code updated successfully" });
   } catch (error) {
-    console.error("Error updating discount code:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
 
 // حذف یک کد تخفیف
-export const deleteDiscountCode = async (req: Request, res: Response) => {
+export const deleteDiscountCode = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
     const { id } = req.params;
-    const discountCode = await DiscountCodes.findByPk(id);
-    if (!discountCode) {
-      res
-        .status(404)
-        .json({ success: false, message: "Discount code not found" });
-      return;
-    }
-    await discountCode.destroy();
+    const discountCode = await deleteDiscountCodeService(id);
     res
       .status(200)
       .json({ success: true, message: "Discount code deleted successfully" });
   } catch (error) {
-    console.error("Error deleting discount code:", error);
-    res.status(500).json({ success: false, message: "Server error" });
+    next(error);
   }
 };
 
 export const validateDiscountCode = async (
   req: AuthenticatedRequest,
-  res: Response
+  res: Response,
+  next: NextFunction
 ): Promise<void> => {
   try {
-    const { code, total_price } = req.body;
-    const userId = req?.user?.id;
-
-    if (!code) {
-      res
-        .status(400)
-        .json({ success: false, message: "کد تخفیف وارد نشده است" });
-      return;
-    }
-
-    const discount = await validateDiscount(code, total_price, userId);
+    const discount = await validateDiscountCodeService({
+      ...req.body,
+      userId: req.user.id,
+    });
     if (discount.success) {
       res.status(200).json(discount);
     } else {
       res.status(422).json(discount);
     }
   } catch (error) {
-    console.error("Error validating discount code:", error);
-    res.status(500).json({ success: false, message: "خطای سرور" });
+    next(error);
   }
 };

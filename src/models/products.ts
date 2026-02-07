@@ -16,7 +16,7 @@ export interface productsAttributes {
   id: number;
   name: string;
   summary?: string;
-  images?: string[];
+  images: string[];
   description?: string;
   model?: string;
   category_id?: number;
@@ -34,7 +34,6 @@ export type productsId = products[productsPk];
 export type productsOptionalAttributes =
   | "id"
   | "summary"
-  | "images"
   | "description"
   | "model"
   | "category_id"
@@ -56,7 +55,7 @@ export class products
   id!: number;
   name!: string;
   summary?: string;
-  images?: string[];
+  images!: string[];
   description?: string;
   model?: string;
   category_id?: number;
@@ -200,7 +199,7 @@ export class products
         },
         images: {
           type: DataTypes.ARRAY(DataTypes.TEXT),
-          allowNull: true,
+          allowNull: false,
         },
         description: {
           type: DataTypes.TEXT,
